@@ -1,0 +1,7 @@
+SECTIONS {
+BASE = 0x100000;
+CODE = BASE;
+DATA = BASE + 0x80000;
+  C_SECT CODE : { Task1.o (CODE_SECT) }
+  D_SECT DATA : { Task1.o (DATA_SECT) }
+}
