@@ -13,7 +13,7 @@
 |  The first part of the TCB (through the stack pointer) is used to store
 |  the task's context.  The rest stores other task status.
 |
-.macro TCB entry,stack
+.macro TCB entry,stack,console
     .hword 0            | PSW (0)
     .long \entry        | PC  (2)
     .long 0             | D0 (use MOVEM.L to save registers here) (6)
@@ -34,6 +34,19 @@
     .long \stack        | SP (needs to be saved separately) (66)
     .long 0             | Task status (70)
     .long 0             | Sleep timer (74)
-    .long 0             | Console device (78)
+    .long \console      | Console device (78)
 .endm
-
+|
+|  Define offsets into TCB
+|
+    .equ TCB_PSW,    0
+    .equ TCB_PC,     2
+    .equ TCB_D0,     6
+    .equ TCB_A6,    62
+    .equ TCB_SP,    66
+    .equ TCB_STAT0, 70
+    .equ TCB_STAT1, 71
+    .equ TCB_STAT2, 72
+    .equ TCB_STAT3, 73
+    .equ TCB_SLEEP, 74
+    .equ TCB_CON,   78

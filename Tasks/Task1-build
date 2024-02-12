@@ -1,9 +1,0 @@
-#
-#  Build task 1
-#
-echo "Assembling source for Task 1"
-/opt/local/m68k-elf/bin/as -alms -m68000 Task1.asm -o Task1.o > Task1.list
-echo "Linking Task 1"
-/opt/local/m68k-elf/bin/ld -o Task1 Task1.o -T Task1.link --Map Task1.map
-echo "Task 1 link finished"
-/opt/local/m68k-elf/bin/objcopy -O srec Task1 Task1.S

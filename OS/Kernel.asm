@@ -20,14 +20,18 @@
 |  Addresses for hardware I/O ports
 |
     .section HW_PORTS,#write,#alloc
-TTY0STAT:              |  Console status (LSB indicates data ready to read)
-    DC.B 0
-TTY0DAT:               |  Console data
-    DC.B 0
 CLKSTAT:               |  Clock status and control
-    DC.B 0
+    .byte 0
 CLKRATE:               |  Clock interval
-    DC.B 0
+    .byte 0
+TTY0STAT:              |  Console status (LSB indicates data ready to read)
+    .byte 0
+TTY0DAT:               |  Console data
+    .byte 0
+TTY1STAT:              |  Console status (LSB indicates data ready to read)
+    .byte 0
+TTY1DAT:               |  Console data
+    .byte 0
 |==============================================================================
 |  Hardware Abstraction Layer section
 |
@@ -39,15 +43,22 @@ CLKRATE:               |  Clock interval
 |
 PUTSTR:
     .global PUTSTR
-    MOVEM.L %D0/%A0,-(%SP)
+    MOVEM.L %D0/%A0-%A1,-(%SP)
+    MOVE.L #0,%A1
+    MOVE.W CURRTASK,%A1
+    ADD.L %A1,%A1
+    ADD.L %A1,%A1
+    MOVE.L TASKTBL(%A1),%A1   |  Pointer to current TCB
+    MOVE.L TCB_CON(%A1),%A1   |  Pointer to console device
+    MOVE.L (%A1),%A1
     ADDQ #2,%A0
     CLR.L %D0
     MOVE.W (%A0)+,%D0      |  Get length of string
     SUBQ.W #1,%D0
 0:
-    MOVE.B (%A0)+,TTY0DAT
+    MOVE.B (%A0)+,(%A1)
     DBF %D0,0b
-    MOVEM.L (%SP)+,%D0/%A0
+    MOVEM.L (%SP)+,%D0/%A0-%A1
     RTS
 |
 |  Put a single character to the console.
@@ -55,7 +66,16 @@ PUTSTR:
 |  Output: None
 |
 PUTC:
-    MOVE.B %D0,TTY0DAT
+    MOVE.L %A1,-(%SP)
+    MOVE.L #0,%A1
+    MOVE.W CURRTASK,%A1
+    ADD.L %A1,%A1
+    ADD.L %A1,%A1
+    MOVE.L TASKTBL(%A1),%A1   |  Pointer to current TCB
+    MOVE.L TCB_CON(%A1),%A1   |  Pointer to console device
+    MOVE.L (%A1),%A1
+    MOVE.B %D0,(%A1)
+    MOVE.L (%SP)+,%A1
     RTS
 |
 |  Get a single character from the console.  This waits
@@ -144,14 +164,15 @@ CLKCOUNT:
 |
 |  Table for tasks/threads/whatever you want to call them
 |
-    .equ MAXTASK, 2
+    .equ MAXTASK, 3
 CURRTASK:
     .global CURRTASK
     .hword 1
 TASKTBL:
     .global TASKTBL
-    .long TASK0DAT
-    .long TASK1DAT
+    .long TCB0
+    .long TCB1
+    .long TCB2
 |
 |  The task data contains the data for context switching and other task
 |  related data.
@@ -167,16 +188,18 @@ TASKTBL:
 |  Task sleep timer
 |  Task console device
 |
-TASK0DAT: TCB NULLTASK,USRSTK
-TASK1DAT: TCB 0x100000,0x200000
+TCB0: TCB NULLTASK,USRSTK,0
+TCB1: TCB 0x100000,0x200000,TTY0DEV
+TCB2: TCB 0x200000,0x300000,TTY1DEV
 |
 |  Table for TTY devices.  The device number indexes to a pointer to the device
 |  data.
 |
 TTYCNT:
-    .word 1             | Number of TTY devices available
+    .word 2             | Number of TTY devices available
 TTYTBL:
-    .word TTY0DEV
+    .long TTY0DEV
+    .long TTY1DEV
 |
 |  Data for TTY0 device.  This consists of device port addresses, a driver index,
 |  a fill pointer, an empty pointer and a 256 byte buffer.
@@ -184,6 +207,13 @@ TTYTBL:
 TTY0DEV:
     .long TTY0DAT       |  Data port
     .long TTY0STAT      |  Status port
+    .hword 1            |  Driver index (used to select driver)
+    .byte 0             |  Buffer fill pointer
+    .byte 0             |  Buffer empty pointer
+    .space 0x100,0      |  Data buffer
+TTY1DEV:
+    .long TTY1DAT       |  Data port
+    .long TTY1STAT      |  Status port
     .hword 1            |  Driver index (used to select driver)
     .byte 0             |  Buffer fill pointer
     .byte 0             |  Buffer empty pointer
@@ -303,12 +333,12 @@ CTXSAVE:
     ADD.L %A6,%A6            |  Multiply task number by four to index
     MOVE.L TASKTBL(%A6),%A6  |  into task table.
     MOVE.W 8(%SP),(%A6)      |  Save PSW
-    MOVE.L 10(%SP),2(%A6)    |  Save PC
-    MOVEM.L %D0-%D7/%A0-%A5,6(%A6) |  Most registers are now saved
+    MOVE.L 10(%SP),TCB_PC(%A6)    |  Save PC
+    MOVEM.L %D0-%D7/%A0-%A5,TCB_D0(%A6) |  Most registers are now saved
     MOVE.L %USP,%A0
     MOVE.L %A6,%A1
-    MOVE.L (%SP)+,62(%A6)    |  Save A6
-    MOVE.L %A0,66(%A6)       |  Save USP
+    MOVE.L (%SP)+,TCB_A6(%A6)    |  Save A6
+    MOVE.L %A0,TCB_SP(%A6)       |  Save USP
     RTS
 |
 |  Schedule which task to run next
@@ -333,12 +363,15 @@ SCHEDULE:
     CMP.W %D0,%D1
     BNE 1f
     MOVEQ.L #1,%D0          |  Wrap to start of list
+    BRA 4f
 1:
+    ADDQ.L #1,%D0
+4:
     MOVE.L %D0,%A0
     ADD.L %A0,%A0
     ADD.L %A0,%A0           |  Multiply by four to use as index
     MOVE.L TASKTBL(%A0),%A0 |  Address of task block
-    TST.L 70(%A0)
+    TST.L TCB_STAT0(%A0)
     BEQ 3f                  |  Found a task to select
     CMP.W CURRTASK,%D0
     BEQ 2f                  |  No candidate was found
@@ -363,11 +396,11 @@ CTXREST:
     ADD.L %A6,%A6            |  Multiply task number by four to index
     ADD.L %A6,%A6            |  into task table
     MOVE.L TASKTBL(%A6),%A6  |  Get pointer to current task table
-    MOVE.L 66(%A6),%A0       |  Get the user stack pointer
+    MOVE.L TCB_SP(%A6),%A0       |  Get the user stack pointer
     MOVE.L %A0,%USP          |  Set user stack pointer
     MOVE.W (%A6),(%SP)       |  Put PSW on stack
-    MOVE.L 2(%A6),2(%SP)     |  Put PC on stack
-    MOVEM.L 6(%A6),%D0-%D7/%A0-%A6
+    MOVE.L TCB_PC(%A6),2(%SP)     |  Put PC on stack
+    MOVEM.L TCB_D0(%A6),%D0-%D7/%A0-%A6
     RTE                    |  Carry on
 |
 |  Exception vectors
