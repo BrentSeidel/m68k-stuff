@@ -5,6 +5,7 @@
 | Description: Module for task #2
 |-----------------------------------------------------------
     .title Example Task 1
+    .include "../Common/constants.asm"
     .INCLUDE "../Common/Macros.asm"
 |
     .section CODE_SECT,#execinstr,#alloc

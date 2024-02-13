@@ -5,6 +5,7 @@
 | Description: Module for task #1
 |-----------------------------------------------------------
     .title Example Task 1
+    .include "../Common/Constants.asm"
     .include "../Common/Macros.asm"
 |
 .macro putsp

@@ -3,14 +3,11 @@
 #
 echo "Assembling source for Task 1"
 /opt/local/m68k-elf/bin/as -alms -m68000 Task1.asm -o Task1.o > Task1.list
-echo "Linking Task 1"
-/opt/local/m68k-elf/bin/ld -o Task1 Task1.o -T Task1.link --Map Task1.map
-/opt/local/m68k-elf/bin/objcopy -O srec Task1 Task1.S
-echo "Task 1 finished"
 #
 echo "Assembling source for Task 2"
 /opt/local/m68k-elf/bin/as -alms -m68000 Task2.asm -o Task2.o > Task2.list
-echo "Linking Task 2"
-/opt/local/m68k-elf/bin/ld -o Task2 Task2.o -T Task2.link --Map Task2.map
-/opt/local/m68k-elf/bin/objcopy -O srec Task2 Task2.S
-echo "Task 2 finished"
+#
+echo "Linking Tasks"
+/opt/local/m68k-elf/bin/ld -o Tasks Task1.o Task2.o -T Tasks.link --Map Tasks.map
+/opt/local/m68k-elf/bin/objcopy -O srec Tasks Tasks.S
+echo "S-record file produced"

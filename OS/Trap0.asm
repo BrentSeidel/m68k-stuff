@@ -7,7 +7,7 @@
     .title Handler for TRAP0 exceptions
     .section OS_SECT,#execinstr,#alloc
     .include "OS-Macros.asm"
-    .include "../Common/Macros.asm"
+    .include "../Common/constants.asm"
 |
 |  Handler for Trap 0
 |

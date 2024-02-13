@@ -5,7 +5,8 @@
 | Description: Operating System for simulated 68000
 |-----------------------------------------------------------
     .title Operating System Kernel
-    .INCLUDE "../Common/Macros.asm"
+    .include "../Common/constants.asm"
+    .include "../Common/Macros.asm"
     .include "OS-Macros.asm"
 |==============================================================================
 |  Exception Vectors
