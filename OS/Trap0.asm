@@ -4,7 +4,10 @@
 | Date       : 6-Feb-2024
 | Description: Handler for TRAP0 exceptions
 |-----------------------------------------------------------
+    .title Handler for TRAP0 exceptions
     .section OS_SECT,#execinstr,#alloc
+    .include "OS-Macros.asm"
+    .include "../Common/Macros.asm"
 |
 |  Handler for Trap 0
 |
@@ -39,25 +42,34 @@ ARG1 = 2
     MOVE.L %USP,%A1    |  A1 has the USP value
 
     MOVE.W (%A1),%D0   |  Get function number
-    TST %D0
+    CMP.W #SYS_EXIT, %D0
     BEQ EXITP          |  Go to function 0 code (exit)
-    CMP.W #1,%D0
+    CMP.W #SYS_PUTS,%D0
     BEQ PUTS           |  Go to function 1 code (putstr)
-    CMP.W #2,%D0
+    CMP.W #SYS_GETS,%D0
     BEQ GETS           |  Go to function 2 code (getstr)
-    CMP.W #16,%D0
+    CMP.W #SYS_SLEEP,%D0
     BEQ SLEEP          |  Go to function 16 code (sleep)
-    CMP.W #64,%D0
+    CMP.W #SYS_SUTDOWN,%D0
     BEQ SHUTDOWN       |  Go to function 64 code (shutdown)
 |
     MOVE.W #0xFFFF,(%A1)   |  Undefined function
+|
+|  Common Trap 0 exit
+|
 EXITT0:
     MOVEM.L (%SP)+,%D0/%A0-%A1
     UNLK %A6
     RTE
 |
 EXITP:                    |  Exit program
-    BRA CLEANUP           |  Needs to change to end just the task
+    MOVE.L #0,%A0
+    MOVE.W CURRTASK,%A0
+    ADD.L %A0,%A0
+    ADD.L %A0,%A0
+    MOVE.L TASKTBL(%A0),%A0
+    BSET #4,TCB_STAT0(%A0) |  Set task terminated bit
+    JMP SCHEDULE
 |
 PUTS:                     |  Put a string to the console
     MOVE.L ARG1(%A1),%A0  |  Get string address
@@ -78,9 +90,9 @@ SLEEP:
     MOVE.W CURRTASK,%A0
     ADD.L %A0,%A0
     ADD.L %A0,%A0
-    MOVE.L TASKTBL(%A0),%A0  |  Get pointer to current task data block
-    MOVE.L %D0,74(%A0)       |  Set sleep time
-    BSET #1,70(%A0)          |  Set sleep status bit
+    MOVE.L TASKTBL(%A0),%A0   |  Get pointer to current task data block
+    MOVE.L %D0,TCB_SLEEP(%A0) |  Set sleep time
+    BSET #1,TCB_STAT0(%A0)    |  Set sleep status bit
     JMP SCHEDULE
 |
 SHUTDOWN:

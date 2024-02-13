@@ -10,8 +10,21 @@
 |
 |  Macro to define a Task Control Block.  By using a macro, we can ensure
 |  that TCBs are defined consistently.
-|  The first part of the TCB (through the stack pointer) is used to store
-|  the task's context.  The rest stores other task status.
+|
+|  The task data block contains the following items
+|  PSW
+|  PC
+|  Registers D0-D7, A0-A7
+|  Task status (bits)
+|    0/0 - I/O wait
+|    0/1 - Sleep
+|    0/2 - Task terminated
+|  Task sleep timer
+|  Task console device
+|
+|  Note that since the bit instructions only work on a single byte the
+|  bits above are indicated by byte/bit.  The status word can still be
+|  compared with zero using a TST.L instruction.
 |
 .macro TCB entry,stack,console
     .hword 0            | PSW (0)

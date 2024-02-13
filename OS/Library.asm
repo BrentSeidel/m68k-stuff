@@ -21,10 +21,10 @@ NUMTBL:                 |  Table for converting between numbers and ASCII string
 |
 |  Jump table for library routines.
 LIBTBL:
-    .global LIBTBL
-    DC.L OCTSTR
-    DC.L DECSTR
-    DC.L HEXSTR
+    .global LIBTBL,OCTSTR,DECSTR,HEXSTR
+    .long OCTSTR
+    .long DECSTR
+    .long HEXSTR
 |
 |------------------------------------------------------------------------------
 |  Convert numbers to string

@@ -7,10 +7,6 @@
     .title Example Task 1
     .INCLUDE "../Common/Macros.asm"
 |
-|  Library entry points
-|
-    .equ LIBTBL,0x4000
-|
     .section CODE_SECT,#execinstr,#alloc
 |
 TASK2:                  |  first instruction of program

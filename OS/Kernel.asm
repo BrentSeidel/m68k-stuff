@@ -2,7 +2,7 @@
 | Title      : Console I/O
 | Written by : Brent Seidel
 | Date       : 31-Jan-2024
-| Description: Console I/O for simulated 68000
+| Description: Operating System for simulated 68000
 |-----------------------------------------------------------
     .title Operating System Kernel
     .INCLUDE "../Common/Macros.asm"
@@ -177,17 +177,6 @@ TASKTBL:
 |  The task data contains the data for context switching and other task
 |  related data.
 |
-|  The task data block contains the following items
-|  PSW
-|  PC
-|  Registers D0-D7, A0-A7
-|  Task status (bits)
-|    0 - I/O wait
-|    1 - Sleep
-|    2 - Task terminated
-|  Task sleep timer
-|  Task console device
-|
 TCB0: TCB NULLTASK,USRSTK,0
 TCB1: TCB 0x100000,0x200000,TTY0DEV
 TCB2: TCB 0x200000,0x300000,TTY1DEV
@@ -219,7 +208,7 @@ TTY1DEV:
     .byte 0             |  Buffer empty pointer
     .space 0x100,0      |  Data buffer
 |==============================================================================
-|  Operating system, such as it is.  It just does initialization.
+|  Operating system, such as it is.
 |
     .section OS_SECT,#execinstr,#alloc
 INIT:
@@ -252,8 +241,8 @@ INIT:
 |
 |  Start the clock
 |
-    MOVE.B #10,CLKRATE |  Rate is once every 10 seconds
-    MOVE.B #1,CLKSTAT  |  Enable the clock
+    MOVE.B #1,CLKRATE  |  Rate is 10 times a second
+    MOVE.B #1,CLKSTAT  |  Enable the clock (0 - disable, 1 - enable)
 |
 |  Enable TTY0 interrupts
 |
@@ -284,7 +273,6 @@ CLEANUP:
     JSR PUTSTR
     STOP #0x2000
     BRA .
-|    SIMHALT            |  halt simulator (EASy68K only)
 |
 |  The null task.  Use this when no other task can be run
 |

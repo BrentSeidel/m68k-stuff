@@ -1,69 +1,76 @@
-#-----------------------------------------------------------
-# Title      : Task 1
-# Written by : Brent Seidel
-# Date       : 8-Feb-2024
-# Description: Module for task #1
-#-----------------------------------------------------------
+|-----------------------------------------------------------
+| Title      : Task 1
+| Written by : Brent Seidel
+| Date       : 8-Feb-2024
+| Description: Module for task #1
+|-----------------------------------------------------------
     .title Example Task 1
-    .INCLUDE "../Common/Macros.asm"
-#
-#  Library entry points
-#
-    .EQU LIBTBL,0x4000
-#
-    .SECTION CODE_SECT,#execinstr,#alloc
-#
-TASK1:                  |  first instruction of program
-   .global TASK1
-#
-#  Print some messages
-#
+    .include "../Common/Macros.asm"
+|
+.macro putsp
+    move.l %SP,%a2
+    NUMSTR_L %A2,#INSTR,#8,16
+    PRINT #STAK
+    PRINT #INSTR
+    PRINT #NEWLINE
+.endm
+|
+    .section CODE_SECT,#execinstr,#alloc
+|
+START:                  |  first instruction of program
+   .global START
+|
+|  Print some messages
+|
+|    putsp
     NUMSTR_B #255,#INSTR,#0,10
     PRINT #CVT1
     PRINT #INSTR
     PRINT #NEWLINE
-    SLEEP #2
-#
+    SLEEP #20
+|
+|    putsp
     NUMSTR_W #60000,#INSTR,#4,10
     PRINT #CVT2
     PRINT #INSTR
     PRINT #NEWLINE
-    SLEEP #2
-#
+    SLEEP #20
+|
+|    putsp  |  Stack is wrong here
     NUMSTR_L #1000000,#INSTR,#8,16
     PRINT #CVT3
     PRINT #INSTR
     PRINT #NEWLINE
-    SLEEP #2
-#
+    SLEEP #20
+|
+|    putsp
     PRINT #MSG1
     PRINT #MSG2
     PRINT #TXT1
     SLEEP #2
-#
-#  Print a prompt
-#
+|
+|  Print a prompt and get some text
+|
     PRINT #PROMPT
-#
-#  Get some text
-#
     INPUT #INSTR
     PRINT #NEWLINE
-#
-#  Echo it back out
-#
+|
+|  Echo it back out
+|
     PRINT #INSTR
     PRINT #NEWLINE
-#
-#  Exit the program
-#
-    MOVE.W #0,-(SP)     |  Exit function code
+|    putsp
+|
+|  Exit the program
+|
+    MOVE.W #SYS_EXIT,-(%SP)    |  Exit function code
     TRAP #0
+|    putsp
     BRA .               |  If exit doesn't work, wait in an infinite loop
-#==============================================================================
-#  Data section for main code
-#
-    .SECTION DATA_SECT,#write,#alloc
+|==============================================================================
+|  Data section for main code
+|
+    .section DATA_SECT,#write,#alloc
 
     STRING INSTR,0x100
     TEXT PROMPT,"> "
@@ -73,7 +80,7 @@ TASK1:                  |  first instruction of program
     TEXT CVT1,"255 in decimal is "
     TEXT CVT2,"60000 in signed decimal is "
     TEXT CVT3,"1000000 in hexidecimal is "
+    TEXT STAK,"Current SP is "
     TEXT NEWLINE,"\r\n"
-    .global INSTR,PROMPT,MSG1,MSG2,TXT1,CVT1,CVT2,CVT3,NEWLINE
-    .END                |  last line of source
+    .end  START              |  last line of source
 

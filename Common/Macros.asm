@@ -1,16 +1,17 @@
-#-----------------------------------------------------------
-# Title      : Macros.S68
-# Written by : Brent Seidel
-# Date       : 2-Feb-2024
-# Description: A collection of macros and definitions
-#-----------------------------------------------------------
-#
-#  ***  This is not a stand-alone file.  It gets included into
-#  ***  other assembly language programs.
-#
-#
-#  Constants for ASCII characters
-#
+|-----------------------------------------------------------
+| Title      : Macros.S68
+| Written by : Brent Seidel
+| Date       : 2-Feb-2024
+| Description: A collection of macros and definitions
+|-----------------------------------------------------------
+|
+|
+|  Library entry points
+|
+    .equ LIBTBL,0x4000
+|
+|  Constants for ASCII characters
+|
     .equ BELL,  7      |  Ring the bell
     .equ BS,    8      |  Back space
     .equ TAB,   9      |  Horizontal tab
@@ -20,17 +21,30 @@
     .equ LT,   60      |  Less than '<'
     .equ GT,   62      |  Greater than '>'
     .equ DEL, 127      |  Delete
-#
-#  Strings are a data structure as follows:
-#  Word: Max size of string
-#  Word: Current size of string
-#  Bytes: Text of the string
-#
-#  Macros
-#
-#  Define space for a string.  The first argument is
-#  the label, the second is the maximum size.
-#
+|
+|  Codes for system calls
+|    0 - Exit.  Exits the program and does not return
+|    1 - Put string.  Prints the string referenced in the argument
+|    2 - Get string.  Gets text to the string referenced in the argument
+|   16 - Sleep for the number of clock ticks in the argument
+|   64 - Shutdown
+|
+    .equ SYS_EXIT, 0    |  End the current task
+    .equ SYS_PUTS, 1    |  Send a string to the console
+    .equ SYS_GETS, 2    |  Get a string from the console
+    .equ SYS_SLEEP, 16  |  Suspend current task for a number of clock ticks
+    .equ SYS_SUTDOWN, 64 |  Shutdown the system
+|
+|  Strings are a data structure as follows:
+|  Word: Max size of string
+|  Word: Current size of string
+|  Bytes: Text of the string
+|
+|  Macros
+|
+|  Define space for a string.  The first argument is
+|  the label, the second is the maximum size.
+|
 .macro STRING label,size
     .align 2
 \label: .hword \size
@@ -63,38 +77,40 @@
     MOVE.L \num,-(%SP)    |  Number
     .if \base-8
     .else
-      JSR (%A0)
+      MOVE.L (%A0),%A0
     .endif
     .if \base-10
     .else
-      JSR 4(%A0)
+      MOVE.L 4(%A0),%A0
     .endif
     .if \base-16
     .else
-      JSR 8(%A0)
+      MOVE.L 8(%A0),%A0
     .endif
+    JSR (%A0)
     ADDQ.L #8,%SP       |  Clean 10 bytes off the stack.
     ADDQ.L #2,%SP       |  Max ADDQ is 8
     MOVE.L (%SP)+,%A0
 .endm
 .macro NUMSTR_W num,str,flag,base
-    MOVE.L %A0,-(SP)
+    MOVE.L %A0,-(%SP)
     MOVE.L #LIBTBL,%A0
     MOVE.W \flag+1,-(%SP)
     MOVE.L \str,-(%SP)    |  String
     MOVE.L \num,-(%SP)    |  Number
     .if \base-8
     .else
-      JSR (%A0)
+      MOVE.L (%A0),%A0
     .endif
     .if \base-10
     .else
-      JSR 4(%A0)
+      MOVE.L 4(%A0),%A0
     .endif
     .if \base-16
     .else
-      JSR 8(%A0)
+      MOVE.L 8(%A0),%A0
     .endif
+    JSR (%A0)
     ADDQ.L #8,%SP       |  Clean 10 bytes off the stack.
     ADDQ.L #2,%SP       |  Max ADDQ is 8
     MOVE.L (%SP)+,%A0
@@ -107,16 +123,17 @@
     MOVE.L \num,-(%SP)    |  Number
     .if \base-8
     .else
-      JSR (%A0)
+      MOVE.L (%A0),%A0
     .endif
     .if \base-10
     .else
-      JSR 4(%A0)
+      MOVE.L 4(%A0),%A0
     .endif
     .if \base-16
     .else
-      JSR 8(%A0)
+      MOVE.L 8(%A0),%A0
     .endif
+    JSR (%A0)
     ADDQ.L #8,%SP       |  Clean 10 bytes off the stack.
     ADDQ.L #2,%SP       |  Max ADDQ is 8
     MOVE.L (%SP)+,%A0
@@ -146,7 +163,7 @@
 #
 .macro PRINT str
     MOVE.L \str,-(%SP)
-    MOVE.W #1,-(%SP)    |  Code to print a string
+    MOVE.W #SYS_PUTS,-(%SP)    |  Code to print a string
     TRAP #0
     ADDQ.L #6,%SP
 .endm
@@ -155,7 +172,7 @@
 #
 .macro INPUT str
     MOVE.L \str,-(%SP)
-    MOVE.W #2,-(%SP)    |  Code to get a string
+    MOVE.W #SYS_GETS,-(%SP)    |  Code to get a string
     TRAP #0
     ADDQ.L #6,%SP
 .endm
@@ -164,7 +181,7 @@
 #
 .macro SLEEP ticks
     MOVE.L \ticks,-(%SP)
-    MOVE.W #16,-(%SP)
+    MOVE.W #SYS_SLEEP,-(%SP)
     TRAP #0
     ADDQ.L #6,%SP
 .endm
