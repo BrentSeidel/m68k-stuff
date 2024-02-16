@@ -5,7 +5,8 @@ echo "Assembling source for OS kernel"
 /opt/local/m68k-elf/bin/as -alms -m68000 Kernel.asm -o Kernel.o > Kernel.list
 /opt/local/m68k-elf/bin/as -alms -m68000 Trap0.asm -o Trap0.o > Trap0.list
 /opt/local/m68k-elf/bin/as -alms -m68000 Library.asm -o Library.o > Library.list
+/opt/local/m68k-elf/bin/as -alms -m68000 vectors.asm -o vectors.o > vectors.list
 echo "Linking Operating System"
-/opt/local/m68k-elf/bin/ld -o OS68k Kernel.o Trap0.o Library.o -T OS.link --Map OS68k.map
+/opt/local/m68k-elf/bin/ld -o OS68k Kernel.o Trap0.o Library.o -T OS.link vectors.o --Map OS68k.map
 echo "Generating S-rec file"
 /opt/local/m68k-elf/bin/objcopy -O srec OS68k OS68k.S

@@ -15,7 +15,7 @@
 |  PSW
 |  PC
 |  Registers D0-D7, A0-A7
-|  Task status (bits)
+|  Task status (byte/bit)
 |    0/0 - I/O wait
 |    0/1 - Sleep
 |    0/2 - Task terminated
@@ -55,6 +55,19 @@
     .equ TCB_PSW,    0
     .equ TCB_PC,     2
     .equ TCB_D0,     6
+    .equ TCB_D1,    10
+    .equ TCB_D2,    14
+    .equ TCB_D3,    18
+    .equ TCB_D4,    22
+    .equ TCB_D5,    26
+    .equ TCB_D6,    30
+    .equ TCB_D7,    34
+    .equ TCB_A0,    38
+    .equ TCB_A1,    42
+    .equ TCB_A2,    46
+    .equ TCB_A3,    50
+    .equ TCB_A4,    54
+    .equ TCB_A5,    58
     .equ TCB_A6,    62
     .equ TCB_SP,    66
     .equ TCB_STAT0, 70
@@ -63,3 +76,22 @@
     .equ TCB_STAT3, 73
     .equ TCB_SLEEP, 74
     .equ TCB_CON,   78
+|
+|  Get the TCB for the current task.  The address of the TCB is left in
+|  the specified address register.
+|
+.macro GET_TCB reg
+    move.l #0,\reg            |  Ensure that high bits are cleared
+    move.w CURRTASK,\reg      |  Get current task number
+    add.l \reg,\reg
+    add.l \reg,\reg           |  Multiply by 4
+    move.l TASKTBL(\reg),\reg |  Index into TCB table
+.endm
+|
+|  Set an exception vector.  Registers %D0 and %A0 are used.
+|
+.macro SET_VECTOR num,handler
+    move.l \num,%D0      |  TTY0 interrupt
+    move.l \handler,%A0
+    bsr SETVEC
+.endm

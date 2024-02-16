@@ -5,13 +5,15 @@
 | Description: A collection of macros and definitions
 |-----------------------------------------------------------
 |
+|------------------------------------------------------------------------------
 |
 |  Strings are a data structure as follows:
 |  Word: Max size of string
 |  Word: Current size of string
 |  Bytes: Text of the string
 |
-|  Macros
+|------------------------------------------------------------------------------
+|  String definition macros
 |
 |  Define space for a string.  The first argument is
 |  the label, the second is the maximum size.
@@ -22,12 +24,11 @@
     .hword 0
     .space \size,0
 .endm
-#
-#  Define a string with text.  The first argument is
-#  the label.  The second is the text.  Enclose the text
-#  with <>.  Note that the text also needs to be surrounded
-#  by ''.  The text can also include bytes.
-#
+|
+|  Define a string with text.  The first argument is
+|  the label.  The second is the text.  Enclose the text
+|  with quotation marks ("").
+|
 .macro TEXT label,string
     .align 2
 \label: .hword 0f-\label-4
@@ -35,125 +36,147 @@
     .ascii "\string"
 0:
 .endm
-#
-#  Convert a number to a string.  Called as
-#   NUMSTR.x <number>,<string>,<flags>,<base>
-#       <base> is the conversion base and can be 8, 10, or 16
+|------------------------------------------------------------------------------
+|  Number conversion macros
+|
+|  Convert a number to a string.  Called as
+|   NUMSTR.x <number>,<string>,<flags>,<base>
+|       <base> is the conversion base and can be 8, 10, or 16
 #
 .macro NUMSTR_B num,str,flag,base
-    MOVE.L %A0,-(%SP)
-    MOVE.L #LIBTBL,%A0
-    MOVE.W \flag,-(%SP)
-    MOVE.L \str,-(%SP)    |  String
-    MOVE.L \num,-(%SP)    |  Number
+    move.l %A0,-(%SP)
+    move.l #LIBTBL,%A0
+    move.w \flag,-(%SP)
+    move.l \str,-(%SP)    |  String
+    move.l \num,-(%SP)    |  Number
     .if \base-8
     .else
-      MOVE.L (%A0),%A0
+      move.l LIB_OCTSTR(%A0),%A0
     .endif
     .if \base-10
     .else
-      MOVE.L 4(%A0),%A0
+      move.l LIB_DECSTR(%A0),%A0
     .endif
     .if \base-16
     .else
-      MOVE.L 8(%A0),%A0
+      move.l LIB_HEXSTR(%A0),%A0
     .endif
     JSR (%A0)
-    ADDQ.L #8,%SP       |  Clean 10 bytes off the stack.
-    ADDQ.L #2,%SP       |  Max ADDQ is 8
-    MOVE.L (%SP)+,%A0
+    addq.l #8,%SP       |  Clean 10 bytes off the stack.
+    addq.l #2,%SP       |  Max ADDQ is 8
+    move.l (%SP)+,%A0
 .endm
 .macro NUMSTR_W num,str,flag,base
-    MOVE.L %A0,-(%SP)
-    MOVE.L #LIBTBL,%A0
-    MOVE.W \flag+1,-(%SP)
-    MOVE.L \str,-(%SP)    |  String
-    MOVE.L \num,-(%SP)    |  Number
+    move.l %A0,-(%SP)
+    move.l #LIBTBL,%A0
+    move.w \flag+1,-(%SP)
+    move.l \str,-(%SP)    |  String
+    move.l \num,-(%SP)    |  Number
     .if \base-8
     .else
-      MOVE.L (%A0),%A0
+      move.l LIB_OCTSTR(%A0),%A0
     .endif
     .if \base-10
     .else
-      MOVE.L 4(%A0),%A0
+      move.l LIB_DECSTR(%A0),%A0
     .endif
     .if \base-16
     .else
-      MOVE.L 8(%A0),%A0
+      move.l LIB_HEXSTR(%A0),%A0
     .endif
     JSR (%A0)
-    ADDQ.L #8,%SP       |  Clean 10 bytes off the stack.
-    ADDQ.L #2,%SP       |  Max ADDQ is 8
-    MOVE.L (%SP)+,%A0
+    addq.l #8,%SP       |  Clean 10 bytes off the stack.
+    addq.l #2,%SP       |  Max ADDQ is 8
+    move.l (%SP)+,%A0
 .endm
 .macro NUMSTR_L num,str,flag,base
-    MOVE.L %A0,-(%SP)
-    MOVE.L #LIBTBL,%A0
-    MOVE.W \flag+2,-(%SP)
-    MOVE.L \str,-(%SP)    |  String
-    MOVE.L \num,-(%SP)    |  Number
+    move.l %A0,-(%SP)
+    move.l #LIBTBL,%A0
+    move.w \flag+2,-(%SP)
+    move.l \str,-(%SP)    |  String
+    move.l \num,-(%SP)    |  Number
     .if \base-8
     .else
-      MOVE.L (%A0),%A0
+      move.l LIB_OCTSTR(%A0),%A0
     .endif
     .if \base-10
     .else
-      MOVE.L 4(%A0),%A0
+      move.l LIB_DECSTR(%A0),%A0
     .endif
     .if \base-16
     .else
-      MOVE.L 8(%A0),%A0
+      move.l LIB_HEXSTR(%A0),%A0
     .endif
     JSR (%A0)
-    ADDQ.L #8,%SP       |  Clean 10 bytes off the stack.
-    ADDQ.L #2,%SP       |  Max ADDQ is 8
-    MOVE.L (%SP)+,%A0
+    addq.l #8,%SP       |  Clean 10 bytes off the stack.
+    addq.l #2,%SP       |  Max ADDQ is 8
+    move.l (%SP)+,%A0
 .endm
-#
-#  Get the max size of a string.
-#   STRMAX <string>,<destination>
-#
+|------------------------------------------------------------------------------
+|  String manipulation macros
+|
+|  Get the max size of a string.
+|   STRMAX <string>,<destination>
+|  Note that A0 cannot be used as a destination since it's save and restored
+|
 .macro STRMAX str,dest
-    MOVE.L %A0,-(%SP)    |  Save A0 since it is used
-    MOVE.L \str,%A0
-    MOVE.W (%A0),\dest
-    MOVE.L (%SP)+,%A0
+    move.l %A0,-(%SP)    |  Save A0 since it is used
+    move.l \str,%A0
+    move.w (%A0),\dest
+    move.l (%SP)+,%A0
 .endm
-#
-#  Get the current length of a string
-#   STRLEN <string>,<destination>
-#
+|
+|  Get the current length of a string
+|   STRLEN <string>,<destination>
+|  Note that A0 cannot be used as a destination since it's save and restored
+|
 .macro STRLEN str,dest
-    MOVE.L %A0,-(SP)    |  Save A0 since it is used
-    MOVE.L \str,%A0
-    MOVE.W 2(%A0),\dest
-    MOVE.L (%SP)+,%A0
+    move.l %A0,-(SP)    |  Save A0 since it is used
+    move.l \str,%A0
+    move.w 2(%A0),\dest
+    move.l (%SP)+,%A0
 .endm
-#
-#  Print a string
-#
+|------------------------------------------------------------------------------
+|  I/O Macros
+|
+|  Print a string
+|
 .macro PRINT str
-    MOVE.L \str,-(%SP)
-    MOVE.W #SYS_PUTS,-(%SP)    |  Code to print a string
-    TRAP #0
-    ADDQ.L #6,%SP
+    move.l \str,-(%SP)
+    move.w #SYS_PUTS,-(%SP)    |  Code to print a string
+    trap #0
+    addq.l #6,%SP
 .endm
-#
-#  Get a string
-#
+|
+|  Print a character
+|
+.macro PUTC char
+    move.w \char,-(%SP)
+    move.w #SYS_PUTC,-(%SP)    |  Code to print a string
+    trap #0
+    addq.l #4,%SP
+.endm
+|
+|  Get a string
+|
 .macro INPUT str
-    MOVE.L \str,-(%SP)
-    MOVE.W #SYS_GETS,-(%SP)    |  Code to get a string
-    TRAP #0
-    ADDQ.L #6,%SP
+    move.l %A0,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_GETSTR(%A0),%A0
+    move.l \str,-(%SP)
+    jsr (%A0)
+    addq.l #4,%SP
+    move.l (%SP)+,%A0
 .endm
-#
-#  Suspend a task for the specified number of clock ticks
-#
+|------------------------------------------------------------------------------
+|  System function macros
+|
+|  Suspend a task for the specified number of clock ticks
+|
 .macro SLEEP ticks
-    MOVE.L \ticks,-(%SP)
-    MOVE.W #SYS_SLEEP,-(%SP)
-    TRAP #0
-    ADDQ.L #6,%SP
+    move.l \ticks,-(%SP)
+    move.w #SYS_SLEEP,-(%SP)
+    trap #0
+    addq.l #6,%SP
 .endm
 
