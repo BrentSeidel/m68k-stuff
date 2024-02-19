@@ -88,6 +88,34 @@
     move.l TASKTBL(\reg),\reg |  Index into TCB table
 .endm
 |
+|  Define a Device Control Block.
+|  Currently, the only device controlled by a DCB is the console interfaces.
+|  This will likely evolve once more devices are defined.
+|  The defined flags are:
+|  byte/bit - Meaning
+|     0/0 - Buffer full
+|     0/1 - Buffer empty
+|
+.macro DCB base,unit
+    .long \base         |  Data port
+    .long 0             |  Flag word
+    .hword \unit        |  Unit number
+    .hword 1            |  Driver index (used to select driver)
+    .byte 0             |  Buffer fill pointer
+    .byte 0             |  Buffer empty pointer
+    .space 0x100,0      |  Data buffer
+.endm
+|
+|  Offsets into DCB
+|
+   .equ DCB_PORT,      0
+   .equ DCB_FLAGS,     4
+   .equ DCB_UNIT,      8
+   .equ DCB_DRIVER,   10
+   .equ DCB_FILL,     12
+   .equ DCB_EMPTY,    13
+   .equ DCB_BUFFER,   14
+|
 |  Set an exception vector.  Registers %D0 and %A0 are used.
 |
 .macro SET_VECTOR num,handler

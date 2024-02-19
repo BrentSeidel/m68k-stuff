@@ -44,8 +44,8 @@ PUTSTR:
     .global PUTSTR
     MOVEM.L %D0/%A0-%A1,-(%SP)
     GET_TCB %A1
-    MOVE.L TCB_CON(%A1),%A1   |  Pointer to console device
-    MOVE.L (%A1),%A1
+    MOVE.L TCB_CON(%A1),%A1   |  Pointer to console device block
+    MOVE.L DCB_PORT(%A1),%A1
     ADDQ #2,%A0
     CLR.L %D0
     MOVE.W (%A0)+,%D0      |  Get length of string
@@ -64,8 +64,8 @@ PUTCHAR:
     .global PUTCHAR
     MOVE.L %A1,-(%SP)
     GET_TCB %A1
-    MOVE.L TCB_CON(%A1),%A1   |  Pointer to console device
-    MOVE.L (%A1),%A1
+    MOVE.L TCB_CON(%A1),%A1   |  Pointer to console device block
+    MOVE.L DCB_PORT(%A1),%A1
     MOVE.B %D0,1(%A1)
     MOVE.L (%SP)+,%A1
     RTS
@@ -77,31 +77,31 @@ PUTCHAR:
 |
 GETCHAR:
     .global GETCHAR
-    CLR.L %D0                   |  Make sure unused bits are cleared
-    MOVE.L (%A0),%A0            |  Get status port address
-    BTST #0,(%A0)               |  Is character ready?
-    BEQ 0f
-    MOVE.B 1(%A0),%D0           |  Get character, if present
-    RTS
-0:  MOVE.W #0x100,%D0           |  Otherwise use invalid character
-    RTS
+    clr.l %D0                   |  Make sure unused bits are cleared
+    move.l DCB_PORT(%A0),%A0            |  Get status port address
+    btst #0,(%A0)               |  Is character ready?
+    beq 0f
+    move.b 1(%A0),%D0           |  Get character, if present
+    rts
+0:  move.w #0x100,%D0           |  Otherwise use invalid character
+    rts
 |
 |------------------------------------------------------------------------------
 TTY0HANDLE:            |  65-TTY0 handler
-    MOVE.L %A0,-(%SP)
-    MOVE.L #TASKTBL,%A0
-    MOVE.L 4(%A0),%A0       |  Get TCB for task 1
-    BCLR #0,TCB_STAT0(%A0)  |  Clear the console wait bit and schedule
-    MOVE.L (%SP)+,%A0
+    move.l %A0,-(%SP)
+    move.l #TASKTBL,%A0
+    move.l 4(%A0),%A0       |  Get TCB for task 1
+    bclr #0,TCB_STAT0(%A0)  |  Clear the console wait bit and schedule
+    move.l (%SP)+,%A0
     rte
 |
 |------------------------------------------------------------------------------
 TTY1HANDLE:            |  66-TTY0 handler
-    MOVE.L %A0,-(%SP)
-    MOVE.L #TASKTBL,%A0
-    MOVE.L 8(%A0),%A0       |  Get TCB for task 2
-    BCLR #0,TCB_STAT0(%A0)  |  Clear the console wait bit and schedule
-    MOVE.L (%SP)+,%A0
+    move.l %A0,-(%SP)
+    move.l #TASKTBL,%A0
+    move.l 8(%A0),%A0       |  Get TCB for task 2
+    bclr #0,TCB_STAT0(%A0)  |  Clear the console wait bit and schedule
+    move.l (%SP)+,%A0
     rte
 |==============================================================================
 |  Operating system data.  This includes data for exception handlers and
@@ -163,18 +163,8 @@ TTYTBL:
 |  Data for TTY0 device.  This consists of device port addresses, a driver index,
 |  a fill pointer, an empty pointer and a 256 byte buffer.
 |
-TTY0DEV:
-    .long TTY0BASE      |  Data port
-    .hword 1            |  Driver index (used to select driver)
-    .byte 0             |  Buffer fill pointer
-    .byte 0             |  Buffer empty pointer
-    .space 0x100,0      |  Data buffer
-TTY1DEV:
-    .long TTY1BASE      |  Data port
-    .hword 1            |  Driver index (used to select driver)
-    .byte 0             |  Buffer fill pointer
-    .byte 0             |  Buffer empty pointer
-    .space 0x100,0      |  Data buffer
+TTY0DEV: DCB TTY0BASE
+TTY1DEV: DCB TTY1BASE
 |==============================================================================
 |  Operating system, such as it is.
 |

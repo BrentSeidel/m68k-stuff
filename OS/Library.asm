@@ -414,31 +414,31 @@ GETSTR:
     move.w #SYS_GETC,-(%SP)
     trap #0             |  System call to get character
     move.w (%SP)+,%D0   |  Get the returned character
-    CMP.B #CR,%D0       |  Check for carriage return
-    BEQ 3f
-    CMP.B #LF,%D0       |  Check for linefeed
-    BEQ 3f
-    CMP.B #BS,%D0       |  Check for backspace
-    BEQ 1f
-    CMP.B #DEL,%D0      |  Check for delete
-    BEQ 1f
-    MOVE.B %D0,(%A0)+
+    cmp.b #CR,%D0       |  Check for carriage return
+    beq 3f
+    cmp.b #LF,%D0       |  Check for linefeed
+    beq 3f
+    cmp.b #BS,%D0       |  Check for backspace
+    beq 1f
+    cmp.b #DEL,%D0      |  Check for delete
+    beq 1f
+    move.b %D0,(%A0)+
     PUTC %D0            |  Echo the character
-    ADDQ.L #1,%D3
-    DBF %D1,0b
+    addq.l #1,%D3
+    dbf %D1,0b
 1:                      |  Handle backspace/delete
-    CMP.W %D1,%D2
-    BEQ 2f              |  Check if string is empty
-    SUBQ.L #1,%A0       |  Move pointer back
-    ADDQ.L #1,%D1       |  Move counter up
-    SUBQ.L #1,%D3       |  Move size back
+    cmp.w %D1,%D2
+    beq 2f              |  Check if string is empty
+    subq.l #1,%A0       |  Move pointer back
+    addq.l #1,%D1       |  Move counter up
+    subq.l #1,%D3       |  Move size back
     PUTC #BS            |  Update display
     PUTC #SP
     PUTC #BS
-    BRA 0b
+    bra 0b
 2:
     PUTC #BELL
-    BRA 0b
+    bra 0b
 3:
     PUTC #CR
     PUTC #LF

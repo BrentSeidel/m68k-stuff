@@ -73,10 +73,10 @@ EXITP:                    |  Exit program
 |------------------------------------------------------------------------------
 PUTS:                     |  Put a string to the console
    .global PUTS
-    MOVE.L ARG1(%A1),%A0  |  Get string address
-    BSR PUTSTR
-    CLR.W (%A1)           |  Set status to success
-    BRA EXITT0
+    move.l ARG1(%A1),%A0  |  Get string address
+    bsr PUTSTR
+    clr.w (%A1)           |  Set status to success
+    bra EXITT0
 |------------------------------------------------------------------------------
 PUTC:                     |  Put a character to the console
    .global PUTC
@@ -96,7 +96,7 @@ GETC:                         |  Read a character from the console
     GET_TCB %A0
     bset #0,TCB_STAT0(%A0)    |  Set task I/O wait status
     subq.l #2,TCB_PC(%A0)     |  Backup PC so TRAP will be retried
-    MOVEM.L (%SP)+,%D0/%A0-%A1
+    movem.l (%SP)+,%D0/%A0-%A1
     jmp SCHEDULE
 0:
     move.w %D0,(%A1)          |  Otherwise return character in status
@@ -117,5 +117,5 @@ SLEEP:
 |------------------------------------------------------------------------------
 SHUTDOWN:
    .global SHUTDOWN
-    BRA CLEANUP
+    bra CLEANUP
 
