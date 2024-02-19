@@ -66,7 +66,7 @@ EXITT0:
 |------------------------------------------------------------------------------
 EXITP:                    |  Exit program
     GET_TCB %A0
-    bset #2,TCB_STAT0(%A0) |  Set task terminated bit
+    bset #TCB_FLG_EXIT,TCB_STAT0(%A0) |  Set task terminated bit
     movem.l (%SP)+,%D0/%A0-%A1
     jmp SCHEDULE
 |
@@ -94,7 +94,7 @@ GETC:                         |  Read a character from the console
     cmp.w #0x100,%D0          |  Check if character is ready
     bne 0f
     GET_TCB %A0
-    bset #0,TCB_STAT0(%A0)    |  Set task I/O wait status
+    bset #TCB_FLG_IO,TCB_STAT0(%A0) |  Set task I/O wait status
     subq.l #2,TCB_PC(%A0)     |  Backup PC so TRAP will be retried
     movem.l (%SP)+,%D0/%A0-%A1
     jmp SCHEDULE
@@ -110,7 +110,7 @@ SLEEP:
     MOVE.L ARG1(%A1),%D0      |  Get sleep time in ticks
     GET_TCB %A0
     MOVE.L %D0,TCB_SLEEP(%A0) |  Set sleep time
-    BSET #1,TCB_STAT0(%A0)    |  Set sleep status bit
+    BSET #TCB_FLG_SLEEP,TCB_STAT0(%A0)    |  Set sleep status bit
     MOVEM.L (%SP)+,%D0/%A0-%A1
     JMP SCHEDULE
 |

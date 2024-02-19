@@ -78,7 +78,7 @@ PUTCHAR:
 GETCHAR:
     .global GETCHAR
     clr.l %D0                   |  Make sure unused bits are cleared
-    move.l DCB_PORT(%A0),%A0            |  Get status port address
+    move.l DCB_PORT(%A0),%A0    |  Get status port address
     btst #0,(%A0)               |  Is character ready?
     beq 0f
     move.b 1(%A0),%D0           |  Get character, if present
@@ -87,11 +87,38 @@ GETCHAR:
     rts
 |
 |------------------------------------------------------------------------------
+|  Process receiving a character.  Called from interrupt service routine
+|  with A0 pointing to the DCB.
+RX_CHAR:
+    movem.l %D0-%D1/%A1-%A2,-(%SP)
+    clr.l %D0
+    clr.l %d1
+    move.b DCB_FILL(%A0),%D0    |  Fill pointer
+    move.b DCB_EMPTY(%A0),%D1   |  Empty pointer
+    lea DCB_BUFFER(%A0),%A1     |  Pointer to buffer
+    move.l DCB_PORT(%A0),%A2    |  I/O port address
+    btst #0,(%A2)               |  Check if character ready
+    beq 0f
+    add.l %D0,%A1               |  Add offset to base address
+    move.b 1(%A2),(%A1)         |  Move data from port to buffer
+    addq.b #1,%D0               |  Increment fill pointer
+    move.b %D0,DCB_FILL(%A0)    |  Write it back to DCB
+    bclr #DCB_BUFF_EMPTY,DCB_FLAG0(%A0) |  Clear empty flag
+    cmp.b %D0,%D1               |  Did fill pointer reach empty pointer
+    bne 0f
+    bset #DCB_BUFF_FULL,DCB_FLAG0(%A0) | Set full flag
+    addq.b #1,%D1               |  Increment empty pointer
+    move.b %D1,DCB_EMPTY(%A0)   |  Write it back to DCB
+0:
+    movem.l (%SP)+,%D0-%D1/%A1-%A2
+    rts
+|
+|------------------------------------------------------------------------------
 TTY0HANDLE:            |  65-TTY0 handler
     move.l %A0,-(%SP)
     move.l #TASKTBL,%A0
     move.l 4(%A0),%A0       |  Get TCB for task 1
-    bclr #0,TCB_STAT0(%A0)  |  Clear the console wait bit and schedule
+    bclr #TCB_FLG_IO,TCB_STAT0(%A0) |  Clear the console wait bit
     move.l (%SP)+,%A0
     rte
 |
@@ -100,7 +127,9 @@ TTY1HANDLE:            |  66-TTY0 handler
     move.l %A0,-(%SP)
     move.l #TASKTBL,%A0
     move.l 8(%A0),%A0       |  Get TCB for task 2
-    bclr #0,TCB_STAT0(%A0)  |  Clear the console wait bit and schedule
+    bclr #TCB_FLG_IO,TCB_STAT0(%A0) |  Clear the console wait bit
+    move.l TCB_CON(%A0),%A0 |  Get console DCB for task 2
+    bsr RX_CHAR
     move.l (%SP)+,%A0
     rte
 |==============================================================================
@@ -163,8 +192,8 @@ TTYTBL:
 |  Data for TTY0 device.  This consists of device port addresses, a driver index,
 |  a fill pointer, an empty pointer and a 256 byte buffer.
 |
-TTY0DEV: DCB TTY0BASE
-TTY1DEV: DCB TTY1BASE
+TTY0DEV: DCB TTY0BASE,0
+TTY1DEV: DCB TTY1BASE,1
 |==============================================================================
 |  Operating system, such as it is.
 |
@@ -184,15 +213,17 @@ INIT:
     SET_VECTOR #32,#TRAP0HANDLE
     SET_VECTOR #64,#CLOCKHANDLE
     SET_VECTOR #65,#TTY0HANDLE
+    SET_VECTOR #66,#TTY1HANDLE
 |
 |  Start the clock
 |
     move.b #1,CLKRATE  |  Rate is 10 times a second
     move.b #1,CLKSTAT  |  Enable the clock (0 - disable, 1 - enable)
 |
-|  Enable TTY0 interrupts
+|  Enable TTY interrupts
 |
     move.b #0x14,TTY0BASE
+    move.b #0x14,TTY1BASE
 |
 |  Run the user program
 |
@@ -262,7 +293,6 @@ CTXSAVE:
     MOVE.L 10(%SP),TCB_PC(%A6)   |  Save PC
     MOVEM.L %D0-%D7/%A0-%A5,TCB_D0(%A6) |  Most registers are now saved
     MOVE.L %USP,%A0
-|    MOVE.L %A6,%A1  |  Why?
     MOVE.L (%SP)+,TCB_A6(%A6)    |  Save A6
     MOVE.L %A0,TCB_SP(%A6)       |  Save USP
     move.l TCB_A0(%A6),%A0       |  Restore A0
@@ -395,7 +425,7 @@ CLOCKHANDLE:            |  64-Clock handler
     BEQ 3f              |  If sleep flag is not set
     SUBQ.L #1,74(%A1)
     BNE 3f              |  If count has not reached zero
-    BCLR #1,70(%A1)     |  Clear sleep flag
+    BCLR #TCB_FLG_SLEEP,70(%A1) |  Clear sleep flag
 3:
     DBF %D0,2b
     MOVEM.L (%SP)+,%D0-%D1/%A0-%A1

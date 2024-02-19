@@ -77,6 +77,12 @@
     .equ TCB_SLEEP, 74
     .equ TCB_CON,   78
 |
+|  Define TCB flags
+|
+   .equ TCB_FLG_IO,    0
+   .equ TCB_FLG_SLEEP, 1
+   .equ TCB_FLG_EXIT,  2
+|
 |  Get the TCB for the current task.  The address of the TCB is left in
 |  the specified address register.
 |
@@ -98,23 +104,31 @@
 |
 .macro DCB base,unit
     .long \base         |  Data port
-    .long 0             |  Flag word
-    .hword \unit        |  Unit number
-    .hword 1            |  Driver index (used to select driver)
-    .byte 0             |  Buffer fill pointer
-    .byte 0             |  Buffer empty pointer
-    .space 0x100,0      |  Data buffer
+    .long 0             |  Flag word (4)
+    .hword \unit        |  Unit number (8)
+    .hword 1            |  Driver index (used to select driver) (10)
+    .byte 0             |  Buffer fill pointer (12)
+    .byte 0             |  Buffer empty pointer (13)
+    .space 0x100,0      |  Data buffer (14)
 .endm
 |
 |  Offsets into DCB
 |
-   .equ DCB_PORT,      0
-   .equ DCB_FLAGS,     4
-   .equ DCB_UNIT,      8
-   .equ DCB_DRIVER,   10
-   .equ DCB_FILL,     12
-   .equ DCB_EMPTY,    13
-   .equ DCB_BUFFER,   14
+    .equ DCB_PORT,      0
+    .equ DCB_FLAG0,     4
+    .equ DCB_FLAG1,     5
+    .equ DCB_FLAG2,     6
+    .equ DCB_FLAG3,     7
+    .equ DCB_UNIT,      8
+    .equ DCB_DRIVER,   10
+    .equ DCB_FILL,     12
+    .equ DCB_EMPTY,    13
+    .equ DCB_BUFFER,   14
+|
+|  Define DCB flags
+|
+    .equ DCB_BUFF_FULL,  0
+    .equ DCB_BUFF_EMPTY, 1
 |
 |  Set an exception vector.  Registers %D0 and %A0 are used.
 |
