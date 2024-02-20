@@ -70,20 +70,37 @@ PUTCHAR:
     MOVE.L (%SP)+,%A1
     RTS
 |
-|  Get a single character from the console.  This waits
-|  until a character is ready before returning.
+|  Get a single character from the console.  Checks the DCB buffer to
+|  see if it is empty or not.  If not, returns the next character,
+|  otherwise returns 0x100.
 |  Input: Device control block address in A0
 |  Output: Character, or 0x100 (if no character) in D0.W
 |
 GETCHAR:
     .global GETCHAR
+    movem.l %D1-%D2/%A1,-(%SP)
+    btst #DCB_BUFF_EMPTY,DCB_FLAG0(%A0)
+    beq 0f                      |  If buffer is empty, return invalid character
+      move.w #0x100,%D0
+      movem.l (%SP)+,%D1-%D2/%A1
+      rts
+0:
     clr.l %D0                   |  Make sure unused bits are cleared
-    move.l DCB_PORT(%A0),%A0    |  Get status port address
-    btst #0,(%A0)               |  Is character ready?
-    beq 0f
-    move.b 1(%A0),%D0           |  Get character, if present
-    rts
-0:  move.w #0x100,%D0           |  Otherwise use invalid character
+    clr.l %D1
+    clr.l %D2
+    move.b DCB_FILL(%A0),%D1    |  Get fill pointer
+    move.b DCB_EMPTY(%A0),%D2   |  Get empty pointer
+    lea DCB_BUFFER(%A0),%A1     |  Get buffer pointer
+    add.l %D2,%A1
+    move.b (%A1),%D0            |  Get character
+    addq.b #1,%D2
+    move.b %D2,DCB_EMPTY(%A0)   |  Update empty pointer
+    bclr #DCB_BUFF_FULL,DCB_FLAG0(%A0)
+    cmp.b %D1,%D2               |  Check if buffer is now empty
+    bne 1f
+      bset #DCB_BUFF_EMPTY,DCB_FLAG0(%A0)
+1:
+    movem.l (%SP)+,%D1-%D2/%A1
     rts
 |
 |------------------------------------------------------------------------------
@@ -119,6 +136,8 @@ TTY0HANDLE:            |  65-TTY0 handler
     move.l #TASKTBL,%A0
     move.l 4(%A0),%A0       |  Get TCB for task 1
     bclr #TCB_FLG_IO,TCB_STAT0(%A0) |  Clear the console wait bit
+    move.l TCB_CON(%A0),%A0 |  Get console DCB for task 1
+    bsr RX_CHAR
     move.l (%SP)+,%A0
     rte
 |

@@ -64,10 +64,23 @@ The clock has a settable rate for the periodic interrupts.  The rate is a byte s
 Multiple terminal interfaces can be supported.  Right now, each interface has its own interrupt vector, but it should be possible to have a single vector where the service routine determines which interfaces are ready.
 
 \subsection{System Calls}
+Currently, all system calls are handled by TRAP \#0.  The system call number and any parameters are pushed onto the stack prior to the call.  The following system calls are currently defined:
+\begin{description}
+  \item[0 SYS\_EXIT] - Exit program
+  \item[1 SYS\_PUTS] - Send a string to the console
+  \item[2 SYS\_GETC] - Get a character from the console
+  \item[3 SYS\_PUTC] - Send a character to the console
+  \item[16 SYS\_SLEEP] - Suspend current task for a number of clock ticks
+  \item[64 SYS\_SHUTDOWN] - Shuts the system down
+\end{description}
 
 \section{Library}
+The library starts with a table of addresses of the various library routines.  This allows the user programs to find the desired routine by looking in a fixed address.
+
+Since the library routines can be preempted, the library must contain only reentrant code.
 
 \section{User Space}
+Each task is allocated 1 megabyte of space starting on a megabyte boundary.  The initial PC is the start of the space and the initial SP is the end of the space.  The user program can use this space as it sees fit.
 
 \end{document}
 

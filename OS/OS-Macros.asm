@@ -104,7 +104,10 @@
 |
 .macro DCB base,unit
     .long \base         |  Data port
-    .long 0             |  Flag word (4)
+    .byte 2             |  Flag word 0 (4)  Buffer empty flag is set
+    .byte 0             |  Flag word 1 (5)
+    .byte 0             |  Flag word 2 (6)
+    .byte 0             |  Flag word 3 (7)
     .hword \unit        |  Unit number (8)
     .hword 1            |  Driver index (used to select driver) (10)
     .byte 0             |  Buffer fill pointer (12)
