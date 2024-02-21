@@ -1,12 +1,13 @@
-#-----------------------------------------------------------
-# Title      : OS-Macros.S68
-# Written by : Brent Seidel
-# Date       : 11-Feb-2024
-# Description: A collection of operating system macros and definitions
-#-----------------------------------------------------------
-#
-#  ***  This is not a stand-alone file.  It gets included into
-#  ***  other assembly language programs.
+|------------------------------------------------------------------------------
+| Title      : OS-Macros.S68
+| Written by : Brent Seidel
+| Date       : 11-Feb-2024
+| Description: A collection of operating system macros and definitions
+|------------------------------------------------------------------------------
+.nolist
+|
+|  ***  This is not a stand-alone file.  It gets included into
+|  ***  other assembly language programs.
 |
 |  Macro to define a Task Control Block.  By using a macro, we can ensure
 |  that TCBs are defined consistently.
@@ -140,3 +141,4 @@
     move.l \handler,%A0
     bsr SETVEC
 .endm
+.list

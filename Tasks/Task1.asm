@@ -13,6 +13,30 @@
 START:                  |  first instruction of program
    .global START
 |
+|  Test octal conversion
+|
+    move.l #NUMBER,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_STROCT(%A0),%A0
+    jsr (%A0)
+    move.l (%SP)+,%D0
+|
+|  Test hexidecimal conversion
+|
+    move.l #NUMBER,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_STRHEX(%A0),%A0
+    jsr (%A0)
+    move.l (%SP)+,%D0
+|
+|  Test decimal conversion
+|
+    move.l #NUMBER,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_STRDEC(%A0),%A0
+    jsr (%A0)
+    move.l (%SP)+,%D0
+|
 |  Print some messages
 |
     PRINT #MSG1
@@ -69,5 +93,6 @@ START:                  |  first instruction of program
     TEXT CVT3,"1000000 in hexidecimal is "
     TEXT STAK,"Current SP is "
     TEXT NEWLINE,"\r\n"
+    TEXT NUMBER,"1234567890ABCDEF"
     .end  START              |  last line of source
 

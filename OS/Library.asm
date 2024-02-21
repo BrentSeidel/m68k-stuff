@@ -134,9 +134,9 @@ OCT.L4:
     |  Check for adding negative sign
     |
     BTST #2,%D1
-    BEQ OCT.D1            |  Not signed
+    BEQ OCT.D1           |  Not signed
     BTST #4,%D1
-    BEQ OCT.D1            |  Not negative
+    BEQ OCT.D1           |  Not negative
     MOVE.B #'-',-(%A0)
     |
     |  Move to destination
@@ -261,7 +261,7 @@ DEC.D1:
 DEC.D2:
     MOVE.W %D3, 2(%A0)   |  Set length of destination
     SUBQ.L #1,%D3
-    ADDQ.L #4,%A0       |  Point to start of text part of string
+    ADDQ.L #4,%A0        |  Point to start of text part of string
 DEC.D3:
     MOVE.B (%A1)+,(%A0)+
     DBF %D3,DEC.D3
@@ -360,7 +360,7 @@ HEX.D1:
 HEX.D2:
     MOVE.W %D3, 2(%A0)   |  Set length of destination
     SUBQ.L #1,%D3
-    ADDQ.L #4,%A0       |  Point to start of text part of string
+    ADDQ.L #4,%A0        |  Point to start of text part of string
 HEX.D3:
     MOVE.B (%A1)+,(%A0)+
     DBF %D3,HEX.D3
@@ -373,11 +373,146 @@ HEX.D3:
 |
 |------------------------------------------------------------------------------
 |  Convert strings to numbers
-|  <coming soon>
+|
+|  The following routines convert strings containing digits to
+|  numbers.  Conversion stop when an invalid digit is detected.
+|  The results are always returned as a long word (32 bits).
+|  The calling sequence is:
+|  move.l str, -(%SP)
+|  JSR strxxx
+|  move.l (%SP)+, num
+|
+|  Octal conversion
+|
 STROCT:
+    link %A6,#0
+    movem.l %D0-%D3/%A0,-(%SP)
+    clr.l %D0              |  Accumulator for number
+    clr.l %D1              |  Size of string
+    clr.l %D2              |  Flag for negative
+    clr.l %D3              |  Character to convert
+    move.l 8(%A6),%A0      |  Address of string
+    move.w 2(%A0),%D1      |  Length of string
+    tst.w %D1              |  Check for zero length
+    beq 1f                 |  If so, just return 0
+    lea 4(%A0),%A0         |  Address of string buffer
+    cmp.b #'-',(%A0)       |  Is first character a dash (negative)
+    bne 2f
+      bset #0,%D2          |  Set a flag to indicate negative
+      addq.l #1,%A0
+      subq.l #1,%D1
+2:
+    move.b (%A0)+,%D3
+    sub.b #'0',%D3
+    bmi 1f                 |  Check for out of range characters
+    cmp.b #8,%D3
+    bge 1f
+    lsl.l #3,%D0           |  Shift accumulator and
+    add.l %D3,%D0          |  add new digit
+    subq.w #1,%D1          |  Check for end of string
+    bne 2b                 |  Loop until reached
+|
+|  Cleanup and return
+|
+1:
+    btst #0,%D2            |  Check for negative
+    beq 3f
+      neg %D0
+3:
+    move.l %D0,8(%A6)
+    movem.l (%SP)+,%D0-%D3/%A0
+    unlk %A6
+    rts
+|
+|  Decimal Conversion
+|
 STRDEC:
+    link %A6,#0
+    movem.l %D0-%D4/%A0,-(%SP)
+    clr.l %D0              |  Accumulator for number
+    clr.l %D1              |  Size of string
+    clr.l %D2              |  Flag for negative
+    clr.l %D3              |  Character to convert
+    move.l 8(%A6),%A0      |  Address of string
+    move.w 2(%A0),%D1      |  Length of string
+    tst.w %D1              |  Check for zero length
+    beq 1f                 |  If so, just return 0
+    lea 4(%A0),%A0         |  Address of string buffer
+    cmp.b #'-',(%A0)       |  Is first character a dash (negative)
+    bne 2f
+      bset #0,%D2          |  Set a flag to indicate negative
+      addq.l #1,%A0
+      subq.l #1,%D1
+2:
+    move.b (%A0)+,%D3
+    sub.b #'0',%D3
+    bmi 1f                 |  Check for out of range characters
+    cmp.b #10,%D3
+    bge 1f
+    move.l %D0,%D4         |  Multiply by 10 without a 32 bit MUL instruction
+    lsl.l #3,%D0
+    lsl.l #1,%D4
+    add.l %D4,%D0
+    add.l %D3,%D0          |  Add in the next digit
+    subq.w #1,%D1
+    bne 2b
+1:
+    btst #0,%D2            |  Check for negative
+    beq 3f
+      neg %D0
+3:
+    move.l %D0,8(%A6)
+    movem.l (%SP)+,%D0-%D4/%A0
+    unlk %A6
+    rts
+|
+|  Hexiecimal Conversion
+|
 STRHEX:
-   RTS
+    link %A6,#0
+    movem.l %D0-%D3/%A0,-(%SP)
+    clr.l %D0              |  Accumulator for number
+    clr.l %D1              |  Size of string
+    clr.l %D2              |  Flag for negative
+    clr.l %D3              |  Character to convert
+    move.l 8(%A6),%A0      |  Address of string
+    move.w 2(%A0),%D1      |  Length of string
+    tst.w %D1              |  Check for zero length
+    beq 1f                 |  If so, just return 0
+    lea 4(%A0),%A0         |  Address of string buffer
+    cmp.b #'-',(%A0)       |  Is first character a dash (negative)
+    bne 2f
+      bset #0,%D2          |  Set a flag to indicate negative
+      addq.l #1,%A0
+      subq.l #1,%D1
+2:
+    move.b (%A0)+,%D3
+    sub.b #'0',%D3
+    bmi 1f                 |  Check for out of range characters
+    cmp.b #10,%D3
+    blt 4f
+    sub.b #'A'-'0',%D3
+    bmi 1f
+    cmp.b #6,%D3
+    bge 1f
+    add.b #10,%D3
+4:
+    lsl.l #4,%D0           |  Shift accumulator and
+    add.l %D3,%D0          |  add new digit
+    subq.w #1,%D1          |  Check for end of string
+    bne 2b                 |  Loop until reached
+|
+|  Cleanup and return
+|
+1:
+    btst #0,%D2            |  Check for negative
+    beq 3f
+      neg %D0
+3:
+    move.l %D0,8(%A6)
+    movem.l (%SP)+,%D0-%D3/%A0
+    unlk %A6
+    rts
 |
 |------------------------------------------------------------------------------
 |  Other string operations

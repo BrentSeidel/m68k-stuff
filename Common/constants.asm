@@ -1,7 +1,9 @@
 |
 |  Common constants for both OS and user tasks
 |
-||
+.nolist
+|
+|
 |  Constants for ASCII characters
 |
     .equ BELL,  7      |  Ring the bell
@@ -41,4 +43,5 @@
     .equ LIB_STRDEC, 5*4
     .equ LIB_STRHEX, 6*4
     .equ LIB_GETSTR, 7*4
+.list
 
