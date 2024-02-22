@@ -6,15 +6,16 @@
 |
 |  Constants for ASCII characters
 |
-    .equ BELL,  7      |  Ring the bell
-    .equ BS,    8      |  Back space
-    .equ TAB,   9      |  Horizontal tab
-    .equ LF,   10      |  Line feed
-    .equ CR,   13      |  Carriage return
-    .equ SP,   32      |  Space
-    .equ LT,   60      |  Less than '<'
-    .equ GT,   62      |  Greater than '>'
-    .equ DEL, 127      |  Delete
+    .equ BELL,   7      |  Ring the bell
+    .equ BS,     8      |  Back space
+    .equ TAB,    9      |  Horizontal tab
+    .equ LF,    10      |  Line feed
+    .equ CR,    13      |  Carriage return
+    .equ ESC,   27      |  Escape
+    .equ SPACE, 32      |  Space
+    .equ LT,    60      |  Less than '<'
+    .equ GT,    62      |  Greater than '>'
+    .equ DEL,  127      |  Delete
 |
 |  Codes for system calls
 |    0 - Exit.  Exits the program and does not return
@@ -36,12 +37,15 @@
 |
 |  Library jump table offsets
 |
-    .equ LIB_OCTSTR, 1*4
-    .equ LIB_DECSTR, 2*4
-    .equ LIB_HEXSTR, 3*4
-    .equ LIB_STROCT, 4*4
-    .equ LIB_STRDEC, 5*4
-    .equ LIB_STRHEX, 6*4
-    .equ LIB_GETSTR, 7*4
+    .equ LIB_OCTSTR,   1*4
+    .equ LIB_DECSTR,   2*4
+    .equ LIB_HEXSTR,   3*4
+    .equ LIB_STROCT,   4*4
+    .equ LIB_STRDEC,   5*4
+    .equ LIB_STRHEX,   6*4
+    .equ LIB_GETSTR,   7*4
+    .equ LIB_FINDCHR,  8*4
+    .equ LIB_CHRSTR,   9*4
+    .equ LIB_LONGBCD, 10*4
 .list
 

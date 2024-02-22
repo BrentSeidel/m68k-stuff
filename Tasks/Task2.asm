@@ -34,7 +34,7 @@ LOOP:
 |
 |  Exit the program
 |
-    MOVE.W #0,-(SP)     |  Exit function code
+    move.w #0,-(%SP)    |  Exit function code
     TRAP #0
     BRA .               |  If exit doesn't work, wait in an infinite loop
 #==============================================================================

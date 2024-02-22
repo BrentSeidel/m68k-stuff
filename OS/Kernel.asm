@@ -105,7 +105,8 @@ GETCHAR:
 |
 |------------------------------------------------------------------------------
 |  Process receiving a character.  Called from interrupt service routine
-|  with A0 pointing to the DCB.
+|  with A0 pointing to the DCB.  It loops, reading characters, until no
+|  more are ready.
 RX_CHAR:
     movem.l %D0-%D1/%A1-%A2,-(%SP)
     clr.l %D0
@@ -114,6 +115,7 @@ RX_CHAR:
     move.b DCB_EMPTY(%A0),%D1   |  Empty pointer
     lea DCB_BUFFER(%A0),%A1     |  Pointer to buffer
     move.l DCB_PORT(%A0),%A2    |  I/O port address
+1:
     btst #0,(%A2)               |  Check if character ready
     beq 0f
     add.l %D0,%A1               |  Add offset to base address
@@ -122,10 +124,11 @@ RX_CHAR:
     move.b %D0,DCB_FILL(%A0)    |  Write it back to DCB
     bclr #DCB_BUFF_EMPTY,DCB_FLAG0(%A0) |  Clear empty flag
     cmp.b %D0,%D1               |  Did fill pointer reach empty pointer
-    bne 0f
+    bne 1b
     bset #DCB_BUFF_FULL,DCB_FLAG0(%A0) | Set full flag
     addq.b #1,%D1               |  Increment empty pointer
     move.b %D1,DCB_EMPTY(%A0)   |  Write it back to DCB
+    bra 1b
 0:
     movem.l (%SP)+,%D0-%D1/%A1-%A2
     rts

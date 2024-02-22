@@ -1,6 +1,26 @@
 \documentclass[10pt]{article}
-
+%
 \usepackage{url}
+%
+%  Include the listings package
+%
+\usepackage{listings}
+%
+%  Define Tiny Lisp based on Common Lisp
+%
+\lstdefinelanguage[Tiny]{Lisp}[]{Lisp}{morekeywords=[13]{atomp, bit-vector-p, car, cdr, char-downcase, char-code, char-upcase, compiled-function-p, dowhile, dump, exit, fresh-line, if, code-char, lambda, msg, nullp, parse-integer, peek8, peek16, peek32, poke8, poke16, poke32, progn, quote, read-line, reset, setq, simple-bit-vector-p, simple-string-p, simple-vector-p, string-downcase, string-upcase}}
+\lstset{language={[Motorola68k]Assembler}}
+%
+% Macro definitions
+%
+\newcommand{\operation}[1]{\textbf{\texttt{#1}}}
+\newcommand{\package}[1]{\texttt{#1}}
+\newcommand{\function}[1]{\texttt{#1}}
+\newcommand{\constant}[1]{\emph{\texttt{#1}}}
+\newcommand{\keyword}[1]{\texttt{#1}}
+\newcommand{\datatype}[1]{\texttt{#1}}
+\newcommand{\tl}{Tiny-Lisp}
+\newcommand{\cl}{Common Lisp}
 
 %
 % Front Matter
@@ -64,7 +84,7 @@ The clock has a settable rate for the periodic interrupts.  The rate is a byte s
 Multiple terminal interfaces can be supported.  Right now, each interface has its own interrupt vector, but it should be possible to have a single vector where the service routine determines which interfaces are ready.
 
 \subsection{System Calls}
-Currently, all system calls are handled by TRAP \#0.  The system call number and any parameters are pushed onto the stack prior to the call.  The following system calls are currently defined:
+Currently, all system calls are handled by \verb|TRAP #0|.  The system call number and any parameters are pushed onto the stack prior to the call.  The following system calls are currently defined:
 \begin{description}
   \item[0 SYS\_EXIT] - Exit program
   \item[1 SYS\_PUTS] - Send a string to the console

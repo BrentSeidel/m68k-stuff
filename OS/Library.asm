@@ -32,6 +32,9 @@ LIBTBL:
     .long STRDEC
     .long STRHEX
     .long GETSTR
+    .long FIND_CHRSTR
+    .long CHR_STR
+    .long LONG_BCD
 |
 |  Error message to catch some jump table errors
 |
@@ -69,6 +72,7 @@ LIBERR:
 |
 |  Convert a number to an octal string
 |
+    .sbttl OCTSTR - Convert number to a string of octal digits
 OCTSTR:
     LINK %A6,#-20
     MOVEM.L %D0-%D3/%A0-%A1,-(%SP)
@@ -78,70 +82,69 @@ OCTSTR:
     |
     |  Check conversion size
     |
-OCT.SIZE:
     MOVE.L %D1,%D2       |  Get size field
     AND.B #3,%D2
-    BNE OCT.N1
+    bne 1f
     AND.L #0xFF,%D0      |  Byte size
     MOVE #3,%D3          |  Number of characters
     BTST #2,%D1          |  Check if signed
-    BEQ OCT.N3
+    beq 3f
     TST.B %D0            |  Check if positive or negative
-    BPL OCT.N3
+    bpl 3f
     BSET #4,%D1          |  Set flag for negative
     NEG.B %D0
-    BRA OCT.N3
-OCT.N1:
+    bra 3f
+1:
     SUBQ.B #1,%D2
-    BNE OCT.N2
+    bne 2f
     AND.L #0xFFFF,%D0    |  Word size
     MOVE #6,%D3
     BTST #2,%D1          |  Check if signed
-    BEQ OCT.N3
+    beq 3f
     TST.W %D0            |  Check if positive or negative
-    BPL OCT.N3
+    bpl 3f
     BSET #4,%D1          |  Set flag for negative
     NEG.W %D0
-    BRA OCT.N3
-OCT.N2:
+    bra 3f
+2:
     MOVE #11,%D3         |  Long size
     BTST #2,%D1          |  Check if signed
-    BEQ OCT.N3
+    beq 3f
     TST.L %D0            |  Check if positive or negative
-    BPL OCT.N3
+    bpl 3f
     BSET #4,%D1          |  Set flag for negative
     NEG.L %D0
-OCT.N3:
+3:
     |
     |  Conversion loop
     |
-OCT.L1:
+OCT.CVT:
     MOVE.L %D0,%D2
     AND.L #7,%D2
     MOVE.L %D2,%A1
     MOVE.B NUMTBL(%A1),-(%A0)
     LSR.L #3,%D0
-    BNE OCT.L2
+    bne 2f
     BTST #3,%D1
-    BEQ OCT.L3
-OCT.L2:
-    DBF %D3,OCT.L1
-    BRA OCT.L4
-OCT.L3:
+    beq 3f
+2:
+    dbf %D3,OCT.CVT
+    bra 4f
+3:
     SUBQ.B #1,%D3
-OCT.L4:
+4:
     |
     |  Check for adding negative sign
     |
     BTST #2,%D1
-    BEQ OCT.D1           |  Not signed
+    beq OCT.OUT          |  Not signed
     BTST #4,%D1
-    BEQ OCT.D1           |  Not negative
+    beq OCT.OUT          |  Not negative
     MOVE.B #'-',-(%A0)
     |
     |  Move to destination
     |
-OCT.D1:
+OCT.OUT:
     MOVE.L %A0,%D2       |  Pointer to start of string
     MOVE.L %A0,%A1
     LEA -2(%A6),%A0      |  Address of end of conversion buffer
@@ -150,15 +153,15 @@ OCT.D1:
     MOVE.L 12(%A6),%A0   |  Address of destination
     MOVE.W (%A0),%D2     |  Max size of destination
     CMP.W %D3,%D2
-    BGE OCT.D2
+    bge 2f
     MOVE.W %D2,%D3
-OCT.D2:
+2:
     MOVE.W %D3,2(%A0)   |  Set length of destination
     SUBQ.L #1,%D3
     ADDQ.L #4,%A0       |  Point to start of text part of string
-OCT.D3:
+3:
     MOVE.B (%A1)+,(%A0)+
-    DBF %D3,OCT.D3
+    dbf %D3,3b
     |
     |  Cleanup and return
     |
@@ -168,6 +171,7 @@ OCT.D3:
 |
 |  Convert a number to a decimal string
 |
+    .sbttl DECSTR - Convert number to a string of decimal digits
 DECSTR:
     LINK %A6,#-20
     MOVEM.L %D0-%D3/%A0-%A1,-(%SP)
@@ -177,40 +181,39 @@ DECSTR:
     |
     |  Check conversion size
     |
-DEC.SIZE:
     MOVE.L %D1,%D2       |  Get size field
     AND.B #3,%D2
-    BNE DEC.N1
+    bne 1f
     AND.L #0xFF,%D0      |  Byte size
-    MOVE #3,%D3          |  Number of characters
+    move.w #3,%D3        |  Number of characters
     BTST #2,%D1          |  Check if signed
-    BEQ DEC.N3
+    beq 3f
     TST.B %D0            |  Check if positive or negative
-    BPL DEC.N3
+    bpl 3f
     BSET #4,%D1          |  Set flag for negative
     NEG.B %D0
-    BRA DEC.N3
-DEC.N1:
+    BRA 3f
+1:
     SUBQ.B #1,%D2
-    BNE DEC.N2
+    bne 2f
     AND.L #0xFFFF,%D0    |  Word size
-    MOVE #5,%D3
+    move.w #5,%D3        |  Number of characters
     BTST #2,%D1          |  Check if signed
-    BEQ DEC.N3
+    beq 3f
     TST.W %D0            |  Check if positive or negative
-    BPL DEC.N3
+    bpl 3f
     BSET #4,%D1          |  Set flag for negative
     NEG.W %D0
-    BRA DEC.N3
-DEC.N2:
-    MOVE #10,%D3         |  Long size
+    bra 3f
+2:                       |  Long size
+    move.w #10,%D3       |  Number of characters
     BTST #2,%D1          |  Check if signed
-    BEQ DEC.N3
+    beq 3f
     TST.L %D0            |  Check if positive or negative
-    BPL DEC.N3
+    bpl 3f
     BSET #4,%D1          |  Set flag for negative
     NEG.L %D0
-DEC.N3:
+3:
     CLR.L %D2
     MOVE.L %D2,%A1       |  Can't directly clear A registers.
     |
@@ -218,7 +221,7 @@ DEC.N3:
     |  since the DIVU instruction only allows a 16 bit quotient.
     |  This may cause overflow for 32 bit numbers.
     |
-DEC.L1:
+DEC.CVT:
     MOVE.L %D0,%D2
     DIVU #10,%D2         |  Quotient is in lower 16 bits, remainder
     SWAP %D2
@@ -227,27 +230,27 @@ DEC.L1:
     CLR.W %D2
     SWAP %D2
     MOVE.L %D2,%D0       |  Put quotient back into D0
-    BNE DEC.L2
+    bne 2f
     BTST #3,%D1
-    BEQ DEC.L3
-DEC.L2:
-    DBF %D3,DEC.L1
-    BRA DEC.L4
-DEC.L3:
+    beq 3f
+2:
+    dbf %D3,DEC.CVT
+    bra 4f
+3:
     SUBQ.B #1,%D3
-DEC.L4:
+4:
     |
     |  Check for adding negative sign
     |
     BTST #2,%D1
-    BEQ DEC.D1            |  Not signed
+    beq DEC.OUT           |  Not signed
     BTST #4,%D1
-    BEQ DEC.D1            |  Not negative
+    beq DEC.OUT           |  Not negative
     MOVE.B #'-',-(%A0)
     |
     |  Move to destination
     |
-DEC.D1:
+DEC.OUT:
     MOVE.L %A0,%D2       |  Pointer to start of string
     MOVE.L %A0,%A1
     LEA -2(%A6),%A0      |  Address of end of conversion buffer
@@ -256,15 +259,15 @@ DEC.D1:
     MOVE.L 12(%A6),%A0   |  Address of destination
     MOVE.W (%A0),%D2     |  Max size of destination
     CMP.W %D3,%D2
-    BGE DEC.D2
+    bge 2f
     MOVE.W %D2,%D3
-DEC.D2:
+2:
     MOVE.W %D3, 2(%A0)   |  Set length of destination
     SUBQ.L #1,%D3
     ADDQ.L #4,%A0        |  Point to start of text part of string
-DEC.D3:
+3:
     MOVE.B (%A1)+,(%A0)+
-    DBF %D3,DEC.D3
+    dbf %D3,3b
     |
     |  Cleanup and return
     |
@@ -274,6 +277,7 @@ DEC.D3:
 |
 |  Convert a number to an hexidecimal string
 |
+    .sbttl HEXSTR - Convert number to a string of hexidecimal digits
 HEXSTR:
     LINK %A6,#-20
     MOVEM.L %D0-%D3/%A0-%A1,-(%SP)
@@ -283,70 +287,69 @@ HEXSTR:
     |
     |  Check conversion size
     |
-HEX.SIZE:
     MOVE.L %D1,%D2       |  Get size field
     AND.B #3,%D2
-    BNE HEX.N1
+    bne 1f
     AND.L #0xFF,%D0      |  Byte size
     MOVE #2,%D3          |  Number of characters
     BTST #2,%D1          |  Check if signed
-    BEQ HEX.N3
+    beq 3f
     TST.B %D0            |  Check if positive or negative
-    BPL HEX.N3
+    bpl 3f
     BSET #4,%D1          |  Set flag for negative
     NEG.B %D0
-    BRA HEX.N3
-HEX.N1:
+    bra 3f
+1:
     SUBQ.B #1,%D2
-    BNE HEX.N2
+    bne 2f
     AND.L #0xFFFF,%D0   |  Word size
     MOVE #4,%D3
     BTST #2,%D1         |  Check if signed
-    BEQ HEX.N3
+    beq 3f
     TST.W %D0           |  Check if positive or negative
-    BPL HEX.N3
+    bpl 3f
     BSET #4,%D1         |  Set flag for negative
     NEG.W %D0
-    BRA HEX.N3
-HEX.N2:
+    bra 3f
+2:
     MOVE #8,%D3         |  Long size
     BTST #2,%D1         |  Check if signed
-    BEQ HEX.N3
+    beq 3f
     TST.L %D0           |  Check if positive or negative
-    BPL HEX.N3
+    bpl 3f
     BSET #4,%D1         |  Set flag for negative
     NEG.L %D0
-HEX.N3:
+3:
     |
     |  Conversion loop
     |
-HEX.L1:
+HEX.CVT:
     MOVE.L %D0,%D2
     AND.L #15,%D2
     MOVE.L %D2,%A1
     MOVE.B NUMTBL(%A1),-(%A0)
     LSR.L #4,%D0
-    BNE HEX.L2
+    bne 2f
     BTST #3,%D1
-    BEQ HEX.L3
-HEX.L2:
-    DBF %D3,HEX.L1
-    BRA HEX.L4
-HEX.L3:
+    beq 3f
+2:
+    dbf %D3,HEX.CVT
+    bra 4f
+3:
     SUBQ.B #1,%D3
-HEX.L4:
+4:
     |
     |  Check for adding negative sign
     |
     BTST #2,%D1
-    BEQ HEX.D1            |  Not signed
+    beq HEX.OUT           |  Not signed
     BTST #4,%D1
-    BEQ HEX.D1            |  Not negative
+    beq HEX.OUT           |  Not negative
     MOVE.B #'-',-(%A0)
     |
     |  Move to destination
     |
-HEX.D1:
+HEX.OUT:
     MOVE.L %A0,%D2       |  Pointer to start of string
     MOVE.L %A0,%A1
     LEA -2(%A6),%A0      |  Address of end of conversion buffer
@@ -355,21 +358,138 @@ HEX.D1:
     MOVE.L 12(%A6),%A0   |  Address of destination
     MOVE.W (%A0),%D2     |  Max size of destination
     CMP.W %D3,%D2
-    BGE HEX.D2
+    bge 2f
     MOVE.W %D2,%D3
-HEX.D2:
+2:
     MOVE.W %D3, 2(%A0)   |  Set length of destination
     SUBQ.L #1,%D3
     ADDQ.L #4,%A0        |  Point to start of text part of string
-HEX.D3:
+3:
     MOVE.B (%A1)+,(%A0)+
-    DBF %D3,HEX.D3
+    dbf %D3,3b
     |
     |  Cleanup and return
     |
     MOVEM.L (%SP)+,%D0-%D3/%A0-%A1
     UNLK %A6
     RTS
+|
+|------------------------------------------------------------------------------
+|  Convert a long to BCD using the double dabble algorithm, see
+|  https://en.wikipedia.org/wiki/Double_dabble
+|  This is mainly intended to be used for converting longs to decimal
+|  strings, but may have other uses.  It would not be needed for 68k
+|  family members that have a full 32 bit divider.
+|
+|
+|
+|  The calling sequence is:
+|  move.l long,-(%SP)
+|  subq.l #8,%SP  |  Space for BCD
+|  jsr LONG_BCD
+|  move.l (%SP)+,bcd_msw
+|  move.l (%SP)+,bcd_lsw
+|  addq.l #4,%SP
+|
+    .sbttl LONG_BCD - Convert a long to BCD
+LONG_BCD:
+    link %A6,#0
+    movem.l %D0-%D6,-(%SP)
+    clr.l %D0            |  BCD MSW
+    clr.l %D1            |  BCD LSW
+    clr.l %D6            |  Zero
+    move.l 16(%A6),%D2   |  Long to convert
+    move.w #31,%D3       |  Number of bits to process, minus 1
+BCD.LOOP:
+    |
+    |  Make adjustments as needed
+    |
+    moveq.l #3,%D5
+    move.l %D1,%D4       |  Digit 0
+    and.l #0xF,%D4       |  Isolate digit
+    cmp.l #5, %D4        |  Check if 5 or greater
+    blt 0f
+    add.l %D5,%D1        |  Add 3, if so.
+    addx.l %D6,%D0       |  Make sure carry is propagated
+0:
+    move.l %D1,%D4       |  Digit 1
+    lsl.l #4,%D5
+    and.l #0xF0,%D4
+    cmp.l #0x50,%D4
+    blt 1f
+    add.l %D5,%D1
+    addx.l %D6,%D1
+1:
+    move.l %D1,%D4       |  Digit 2
+    lsl.l #4,%D5
+    and.l #0xF00,%D4
+    cmp.l #0x500,%D4
+    blt 2f
+    add.l %D5,%D1
+    addx.l %D6,%D1
+2:
+    move.l %D1,%D4       |  Digit 3
+    lsl.l #4,%D5
+    and.l #0xF000,%D4
+    cmp.l #0x5000,%D4
+    blt 3f
+    add.l %D5,%D1
+    addx.l %D6,%D1
+3:
+    move.l %D1,%D4       |  Digit 4
+    lsl.l #4,%D5
+    and.l #0xF0000,%D4
+    cmp.l #0x50000,%D4
+    blt 4f
+    add.l %D5,%D1
+    addx.l %D6,%D1
+4:
+    move.l %D1,%D4       |  Digit 5
+    lsl.l #4,%D5
+    and.l #0xF00000,%D4
+    cmp.l #0x500000,%D4
+    blt 5f
+    add.l %D5,%D1
+    addx.l %D6,%D1
+5:
+    move.l %D1,%D4       |  Digit 6
+    lsl.l #4,%D5
+    and.l #0xF000000,%D4
+    cmp.l #0x5000000,%D4
+    blt 6f
+    add.l %D5,%D1
+    addx.l %D6,%D1
+6:
+    move.l %D1,%D4       |  Digit 7
+    lsl.l #4,%D5
+    and.l #0xF0000000,%D4
+    cmp.l #0x50000000,%D4
+    blt 7f
+    add.l %D5,%D1
+    addx.l %D6,%D1
+7:
+    move.l %D0,%D4       |  Digit 8
+    moveq.l #3,%D5
+    and.l #0xF,%D4
+    cmp.l #0x5,%D4
+    blt 8f
+    add.l %D5,%D0
+8:
+    |
+    |  For a 32 bit long, digit 8 can only be a maximum of 4, so no need
+    |  to check it.
+    |
+    move #0,%CCR         |  Make sure all the flags are clear for the shift
+    roxl.l #1,%D2        |  Shift bits one place
+    roxl.l #1,%D1
+    roxl.l #1,%D0
+    dbf %D3,BCD.LOOP
+
+    move.l %D0,8(%A6)   |  Move the BCD values to the stack
+    move.l %D1,12(%A6)
+    movem.l (%SP)+,%D0-%D6
+    unlk %A6
+    rts
 |
 |------------------------------------------------------------------------------
 |  Convert strings to numbers
@@ -384,6 +504,7 @@ HEX.D3:
 |
 |  Octal conversion
 |
+    .sbttl STROCT - Convert a string of octal digits to a number
 STROCT:
     link %A6,#0
     movem.l %D0-%D3/%A0,-(%SP)
@@ -426,6 +547,7 @@ STROCT:
 |
 |  Decimal Conversion
 |
+    .sbttl STRDEC - Convert a string of decimal digits to a number
 STRDEC:
     link %A6,#0
     movem.l %D0-%D4/%A0,-(%SP)
@@ -468,6 +590,7 @@ STRDEC:
 |
 |  Hexiecimal Conversion
 |
+    .sbttl STRHEX - Convert a string of hexidecimal digits to a number
 STRHEX:
     link %A6,#0
     movem.l %D0-%D3/%A0,-(%SP)
@@ -516,8 +639,62 @@ STRHEX:
 |
 |------------------------------------------------------------------------------
 |  Other string operations
-|  <coming soon>
 |
+|  Find character in string.  This searches a string for a specified
+|  character.  If found, the location of the character is returned.  If
+|  not found, an invalid location (> 0xFFFF) is returned.  The character
+|  is passed in as a long to give space for the location to be returned.
+|  Calling sequence:
+|  move.l string,-(%SP)
+|  move.l char,-(%SP)
+|  jsr FIND_CHRSTR
+|  move.l (%SP)+,location
+|  addq.l #4,%SP
+|
+    .sbttl FIND_CHRSTR - Finds a character in a string
+FIND_CHRSTR:
+    link %A6,#0
+    movem.l %D0-%D2/%A0-%A1,-(%SP)
+    clr.l %D2              |  Position counter
+    move.l 8(%A6),%D0      |  Character
+    move.l 12(%A6),%A0     |  String
+    clr.l %D1
+    move.w 2(%A0),%D1      |  Get string size
+    addq.l #4,%A0          |  Point to buffer to search
+0:
+    cmp.b (%A0)+,%D0
+    beq 1f
+    addq.l #1,%D2
+    dbf %D1,0b
+    move.l #0x10000,%D2
+1:
+    move.l %D2,8(%A6)
+    movem.l (%SP)+,%D0-%D2/%A0-%A1
+    unlk %A6
+    rts
+|
+|  Convert a character to a string.  It is called with a character and
+|  the address of the string on the stack.  It is assumed that the string
+|  has a maximum length greater than zero.  The result is a string of
+|  length one containing the character.  Previous contents of the string
+|  are lost.
+|  Calling sequence:
+|  move.l string,-(%SP)
+|  move.w char,-(%SP)
+|  jsr CHR_STR
+|  addq.l %6,%SP
+|
+    .sbttl CHR_STR - Convert a character to a string
+CHR_STR:
+    link %A6,#0
+    movem.l %D0/%A0,-(%SP)
+    move.w 8(%A6),%D0
+    move.l 10(%A6),%A0
+    move.w #1,2(%A0)
+    move.b %D0,4(%A0)
+    movem.l (%SP)+,%D0/%A0
+    unlk %A6
+    rts
 |------------------------------------------------------------------------------
 |  I/O operations
 |
@@ -534,6 +711,7 @@ STRHEX:
 |     A0  Address of string
 |     A1  Saved address of string
 |
+    .sbttl GETSTR - Gets a string from the console
 GETSTR:
     .global GETSTR
     link %A6,#0
@@ -568,7 +746,7 @@ GETSTR:
     addq.l #1,%D1       |  Move counter up
     subq.l #1,%D3       |  Move size back
     PUTC #BS            |  Update display
-    PUTC #SP
+    PUTC #SPACE
     PUTC #BS
     bra 0b
 2:

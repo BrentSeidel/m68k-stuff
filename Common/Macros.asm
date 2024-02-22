@@ -40,9 +40,12 @@
 |  Number conversion macros
 |
 |  Convert a number to a string.  Called as
-|   NUMSTR.x <number>,<string>,<flags>,<base>
+|   NUMSTR_B <number>,<string>,<flags>,<base>
+|   NUMSTR_W <number>,<string>,<flags>,<base>
+|   NUMSTR_L <number>,<string>,<flags>,<base>
 |       <base> is the conversion base and can be 8, 10, or 16
-#
+|  Note that A0 cannot be used as a destination since it's saved and restored
+|
 .macro NUMSTR_B num,str,flag,base
     move.l %A0,-(%SP)
     move.l #LIBTBL,%A0
@@ -61,7 +64,7 @@
     .else
       move.l LIB_HEXSTR(%A0),%A0
     .endif
-    JSR (%A0)
+    jsr (%A0)
     addq.l #8,%SP       |  Clean 10 bytes off the stack.
     addq.l #2,%SP       |  Max ADDQ is 8
     move.l (%SP)+,%A0
@@ -84,7 +87,7 @@
     .else
       move.l LIB_HEXSTR(%A0),%A0
     .endif
-    JSR (%A0)
+    jsr (%A0)
     addq.l #8,%SP       |  Clean 10 bytes off the stack.
     addq.l #2,%SP       |  Max ADDQ is 8
     move.l (%SP)+,%A0
@@ -107,9 +110,33 @@
     .else
       move.l LIB_HEXSTR(%A0),%A0
     .endif
-    JSR (%A0)
+    jsr (%A0)
     addq.l #8,%SP       |  Clean 10 bytes off the stack.
     addq.l #2,%SP       |  Max ADDQ is 8
+    move.l (%SP)+,%A0
+.endm
+|
+|  Convert string to number.  Called as
+|   STRNUM <string>,<number>,<base>
+|
+.macro STRNUM str,num,base
+    move.l %A0,-%(SP)
+    move.l #LIBTBL,%A0
+    move.l \str,-(%SP)
+    .if \base-8
+    .else
+      move.l LIB_STROCT(%A0),%A0
+    .endif
+    .if \base-10
+    .else
+      move.l LIB_STRDEC(%A0),%A0
+    .endif
+    .if \base-16
+    .else
+      move.l LIB_STRHEX(%A0),%A0
+    .endif
+    jsr (%A0)
+    move.l (%SP)+,\num
     move.l (%SP)+,%A0
 .endm
 |------------------------------------------------------------------------------
@@ -117,7 +144,7 @@
 |
 |  Get the max size of a string.
 |   STRMAX <string>,<destination>
-|  Note that A0 cannot be used as a destination since it's save and restored
+|  Note that A0 cannot be used as a destination since it's saved and restored
 |
 .macro STRMAX str,dest
     move.l %A0,-(%SP)    |  Save A0 since it is used

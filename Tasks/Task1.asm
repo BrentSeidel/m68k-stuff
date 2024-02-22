@@ -13,6 +13,17 @@
 START:                  |  first instruction of program
    .global START
 |
+|  Test BCD conversion
+|
+    move.l #0xFFFFFFFF,-(%SP)
+    subq.l #8,%SP
+    move.l #LIBTBL,%A0
+    move.l LIB_LONGBCD(%A0),%A0
+    jsr (%A0)
+    move.l (%SP)+,%D0
+    move.l (%SP)+,%D1
+    addq.l #4,%SP
+|
 |  Test octal conversion
 |
     move.l #NUMBER,-(%SP)
@@ -72,6 +83,17 @@ START:                  |  first instruction of program
 |
     PRINT #INSTR
     PRINT #NEWLINE
+|
+|  Find first space in string
+|
+    move.l #INSTR,-(%SP)
+    move.l #SPACE,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_FINDCHR(%A0),%A0
+    jsr (%A0)
+    move.l (%SP)+,%D0
+    addq.l #4,%SP
+
 |
 |  Exit the program
 |
