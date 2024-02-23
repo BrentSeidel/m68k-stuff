@@ -1,9 +1,9 @@
-|-----------------------------------------------------------
+|------------------------------------------------------------------------------
 | Title      : Console I/O
 | Written by : Brent Seidel
 | Date       : 31-Jan-2024
 | Description: Operating System for simulated 68000
-|-----------------------------------------------------------
+|------------------------------------------------------------------------------
     .title Operating System Kernel
     .include "../Common/constants.asm"
     .include "../Common/Macros.asm"
@@ -49,10 +49,13 @@ PUTSTR:
     ADDQ #2,%A0
     CLR.L %D0
     MOVE.W (%A0)+,%D0      |  Get length of string
+    beq 1f                 |  Do nothing if zero length
     SUBQ.W #1,%D0
+
 0:
     MOVE.B (%A0)+,1(%A1)
     DBF %D0,0b
+1:
     MOVEM.L (%SP)+,%D0/%A0-%A1
     RTS
 |

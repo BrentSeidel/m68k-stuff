@@ -1,9 +1,9 @@
-|-----------------------------------------------------------
+|------------------------------------------------------------------------------
 | Title      : Library Routines
 | Written by : Brent Seidel
 | Date       : 4-Feb-2024
 | Description: Common library routines for OS and users
-|-----------------------------------------------------------
+|------------------------------------------------------------------------------
     .include "../Common/constants.asm"
     .include "../Common/Macros.asm"
 |==============================================================================
@@ -35,6 +35,8 @@ LIBTBL:
     .long FIND_CHRSTR
     .long CHR_STR
     .long LONG_BCD
+    .long FILL_CHR
+    .long STR_CHAR
 |
 |  Error message to catch some jump table errors
 |
@@ -86,7 +88,7 @@ OCTSTR:
     AND.B #3,%D2
     bne 1f
     AND.L #0xFF,%D0      |  Byte size
-    MOVE #3,%D3          |  Number of characters
+    move.w #3,%D3        |  Number of characters
     BTST #2,%D1          |  Check if signed
     beq 3f
     TST.B %D0            |  Check if positive or negative
@@ -98,7 +100,7 @@ OCTSTR:
     SUBQ.B #1,%D2
     bne 2f
     AND.L #0xFFFF,%D0    |  Word size
-    MOVE #6,%D3
+    move.w #6,%D3
     BTST #2,%D1          |  Check if signed
     beq 3f
     TST.W %D0            |  Check if positive or negative
@@ -107,7 +109,7 @@ OCTSTR:
     NEG.W %D0
     bra 3f
 2:
-    MOVE #11,%D3         |  Long size
+    move.w #11,%D3       |  Long size
     BTST #2,%D1          |  Check if signed
     beq 3f
     TST.L %D0            |  Check if positive or negative
@@ -124,9 +126,9 @@ OCT.CVT:
     MOVE.L %D2,%A1
     MOVE.B NUMTBL(%A1),-(%A0)
     LSR.L #3,%D0
-    bne 2f
+    bne 2f               |  If not zero, keep looping
     BTST #3,%D1
-    beq 3f
+    beq 3f               |  If no leading zeros, exit
 2:
     dbf %D3,OCT.CVT
     bra 4f
@@ -208,11 +210,12 @@ DECSTR:
 2:                       |  Long size
     move.w #10,%D3       |  Number of characters
     BTST #2,%D1          |  Check if signed
-    beq 3f
+    beq DEC.LONG         |  Not signed
     TST.L %D0            |  Check if positive or negative
-    bpl 3f
+    bpl DEC.LONG         |  Positive
     BSET #4,%D1          |  Set flag for negative
     NEG.L %D0
+    bra DEC.LONG         |  Use BCD conversion for longs.
 3:
     CLR.L %D2
     MOVE.L %D2,%A1       |  Can't directly clear A registers.
@@ -230,15 +233,15 @@ DEC.CVT:
     CLR.W %D2
     SWAP %D2
     MOVE.L %D2,%D0       |  Put quotient back into D0
-    bne 2f
+    bne 2f               |  If not zero, keep looping
     BTST #3,%D1
-    beq 3f
+    beq 3f               |  If no leading zeros, exit
 2:
     dbf %D3,DEC.CVT
     bra 4f
 3:
     SUBQ.B #1,%D3
-4:
+DEC.SIGN:
     |
     |  Check for adding negative sign
     |
@@ -275,6 +278,52 @@ DEC.OUT:
     UNLK %A6
     RTS
 |
+|  Long decimal conversion requires using the long to BCD routine since
+|  the basic 68000 doesn't have a full 32 bit divider.
+|
+DEC.LONG:
+    move.l %D0,-(%SP)
+    subq.l #8,%SP
+    bsr LONG_BCD
+    move.l (%SP)+,%D0
+    move.l (%SP)+,%D2
+    addq.l #4,%SP
+    move.l %D4,-(%SP)
+    |
+    |  Move the BCD digits to the conversion buffer
+    |  %D0 is BCD MSW
+    |  %D1 is conversion flags
+    |  %D2 is BCD LSW
+    |  %D3 is length (10)
+    |  %D4 is scratch
+    |  %A0 is pointer to conversion buffer
+    |  %A1 is index into number table
+    |
+1:
+    move.l %D2,%D4       |  Get digit
+    and.l #15,%D4
+    move.l %D4,%A1
+    move.b NUMTBL(%A1),-(%A0)
+    lsr.l #1,%D0         |  Shift digit out
+    roxr.l #1,%D2
+    lsr.l #1,%D0
+    roxr.l #1,%D2
+    lsr.l #1,%D0
+    roxr.l #1,%D2
+    lsr.l #1,%D0
+    roxr.l #1,%D2
+    tst.l %D2            |  Check for zero remaining
+    bne 0f
+    tst.l %D0
+    bne 0f
+    btst #3,%D1          |  Check for leading zeros
+    beq 2f
+0:
+   dbf %D3,1b
+2:
+    move.l (%SP)+,%D4
+    bra DEC.SIGN
+|
 |  Convert a number to an hexidecimal string
 |
     .sbttl HEXSTR - Convert number to a string of hexidecimal digits
@@ -291,7 +340,7 @@ HEXSTR:
     AND.B #3,%D2
     bne 1f
     AND.L #0xFF,%D0      |  Byte size
-    MOVE #2,%D3          |  Number of characters
+    move.w #2,%D3        |  Number of characters
     BTST #2,%D1          |  Check if signed
     beq 3f
     TST.B %D0            |  Check if positive or negative
@@ -303,7 +352,7 @@ HEXSTR:
     SUBQ.B #1,%D2
     bne 2f
     AND.L #0xFFFF,%D0   |  Word size
-    MOVE #4,%D3
+    move.w #4,%D3
     BTST #2,%D1         |  Check if signed
     beq 3f
     TST.W %D0           |  Check if positive or negative
@@ -312,7 +361,7 @@ HEXSTR:
     NEG.W %D0
     bra 3f
 2:
-    MOVE #8,%D3         |  Long size
+    move.w #8,%D3       |  Long size
     BTST #2,%D1         |  Check if signed
     beq 3f
     TST.L %D0           |  Check if positive or negative
@@ -329,9 +378,9 @@ HEX.CVT:
     MOVE.L %D2,%A1
     MOVE.B NUMTBL(%A1),-(%A0)
     LSR.L #4,%D0
-    bne 2f
+    bne 2f               |  If not zero, keep looping
     BTST #3,%D1
-    beq 3f
+    beq 3f               |  If no leading zeros, exit
 2:
     dbf %D3,HEX.CVT
     bra 4f
@@ -380,8 +429,6 @@ HEX.OUT:
 |  This is mainly intended to be used for converting longs to decimal
 |  strings, but may have other uses.  It would not be needed for 68k
 |  family members that have a full 32 bit divider.
-|
-|
 |
 |  The calling sequence is:
 |  move.l long,-(%SP)
@@ -538,7 +585,7 @@ STROCT:
 1:
     btst #0,%D2            |  Check for negative
     beq 3f
-      neg %D0
+      neg.l %D0
 3:
     move.l %D0,8(%A6)
     movem.l (%SP)+,%D0-%D3/%A0
@@ -581,7 +628,7 @@ STRDEC:
 1:
     btst #0,%D2            |  Check for negative
     beq 3f
-      neg %D0
+      neg.l %D0
 3:
     move.l %D0,8(%A6)
     movem.l (%SP)+,%D0-%D4/%A0
@@ -630,7 +677,7 @@ STRHEX:
 1:
     btst #0,%D2            |  Check for negative
     beq 3f
-      neg %D0
+      neg.l %D0
 3:
     move.l %D0,8(%A6)
     movem.l (%SP)+,%D0-%D3/%A0
@@ -682,7 +729,7 @@ FIND_CHRSTR:
 |  move.l string,-(%SP)
 |  move.w char,-(%SP)
 |  jsr CHR_STR
-|  addq.l %6,%SP
+|  addq.l #6,%SP
 |
     .sbttl CHR_STR - Convert a character to a string
 CHR_STR:
@@ -693,6 +740,76 @@ CHR_STR:
     move.w #1,2(%A0)
     move.b %D0,4(%A0)
     movem.l (%SP)+,%D0/%A0
+    unlk %A6
+    rts
+|
+|  Fills a string with a specified number of characters.  It is called
+|  with a string, character, and the number of times to include the
+|  character.  If the number of characters specified is greater than the
+|  maximum size of the string, that will be used instead.
+|  Calling sequence:
+|  move.l string,-(%SP)
+|  move.w count,-(%SP)
+|  move.w char,-(%SP)
+|  jsr FILL_CHR
+|  addq.l #8,%SP
+|
+    .sbttl FILL_CHR - Returns a string of repeating characters
+FILL_CHR:
+    link %A6,#0
+    movem.l %D0-%D1/%A0,-(%SP)
+    move.w 8(%A6),%D0       |  Character
+    move.w 10(%A6),%D1      |  Count of characters
+    move.l 12(%A6),%A0      |  Address of string
+    tst.w %D1               |  Check for count of 0
+    bne 3f
+    clr.w 2(%A0)            |  If so, set string to empty
+    bra 2f
+3:
+    cmp.w (%A0),%D1         |  Compare count with max size
+    blt 0f
+    move.w (%A0),%D1
+0:
+    move.w %D1,2(%A0)
+    addq.l #4,%A0           |  Point to string buffer
+    subq.w #1,%D1           |  Adjust count
+1:
+    move.b %D0,(%A0)+
+    dbf %D1,1b
+2:
+    movem.l (%SP)+,%D0-%D1/%A0
+    unlk %A6
+    rts
+|
+|  Return the character at a specific location in a string.  If the location
+|  is greater than the string length, a out of range character is returned.
+|  Calling sequence:
+|  move.l string,-(%SP)
+|  move.w position,-(%SP)
+|  jsr STR_CHAR
+|  move.w (%SP)+,character
+|  addq.l #4,%SP
+|
+STR_CHAR:
+    .sbttl STR_CHAR - Returns a specified character from a string
+    link %A6,#0
+    movem.l %D1/%A0,-(%SP)
+    clr.l %D1
+    move.w 8(%A6),%D1       |  Character position
+    move.l 10(%A6),%A0      |  Address of string
+    addq.l #2,%A0           |  Point to string length
+    cmp.w (%A0),%D1
+    blt 0f
+    move.w #0x100,8(%A6)
+    bra 1f
+0:
+    addq.l #2,%A0           |  Point to start of buffer
+    add.l %D1,%A0           |  Point to character
+    move.b (%A0),%D1
+    and.l #0xFF,%D1
+    move.w %D1,8(%A6)
+1:
+    movem.l (%SP)+,%D1/%A0
     unlk %A6
     rts
 |------------------------------------------------------------------------------

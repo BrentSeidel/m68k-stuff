@@ -47,5 +47,7 @@
     .equ LIB_FINDCHR,  8*4
     .equ LIB_CHRSTR,   9*4
     .equ LIB_LONGBCD, 10*4
+    .equ LIB_FILLCHR, 11*4
+    .equ LIB_CHARAT,  12*4
 .list
 

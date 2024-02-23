@@ -95,7 +95,15 @@ Currently, all system calls are handled by \verb|TRAP #0|.  The system call numb
 \end{description}
 
 \section{Library}
-The library starts with a table of addresses of the various library routines.  This allows the user programs to find the desired routine by looking in a fixed address.
+The library starts with a table of addresses of the various library routines.  This allows the user programs to find the desired routine by looking in a fixed address.  The code for a library call looks something like (Other registers besides \%A0 can be used, but \%A7 is the stack pointer and \%A6 is often used as a frame pointer.  The macros use \%A0):
+\begin{lstlisting}
+...  Put stuff on the stack
+    move.l #LIBTBL,%A0
+    move.l LIB_GETSTR(%A0),%A0
+    jsr (%A0)
+...  Cleanup the stack
+\end{lstlisting}
+
 
 Since the library routines can be preempted, the library must contain only reentrant code.
 

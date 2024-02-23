@@ -144,7 +144,7 @@
 |
 |  Get the max size of a string.
 |   STRMAX <string>,<destination>
-|  Note that A0 cannot be used as a destination since it's saved and restored
+|  Note that A0 cannot be used as a destination since it's savedd and restored
 |
 .macro STRMAX str,dest
     move.l %A0,-(%SP)    |  Save A0 since it is used
@@ -155,12 +155,59 @@
 |
 |  Get the current length of a string
 |   STRLEN <string>,<destination>
-|  Note that A0 cannot be used as a destination since it's save and restored
+|  Note that A0 cannot be used as a destination since it's saved and restored
 |
 .macro STRLEN str,dest
     move.l %A0,-(SP)    |  Save A0 since it is used
     move.l \str,%A0
     move.w 2(%A0),\dest
+    move.l (%SP)+,%A0
+.endm
+|
+|  Find a character in a string
+|   FINDCHAR <string to search>,<character to find>,<destination for position>
+|  Note that A0 cannot be used as a destination since it's saved and restored
+|
+.macro FINDCAHR str,char,pos
+    move.l %A0,-(%SP)
+    move.l \str,-(%SP)
+    move.l \char,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_FINDCHR(%A0),%A0
+    jsr (%A0)
+    move.l (%SP)+,\pos
+    addq.l #4,%SP
+    move.l (%SP)+,%A0
+.endm
+|
+|  Fill a string with a specified count of characters.
+|   FILLCHAR <string>,<character>,<count of characters>
+|  Note that A0 cannot be used as a destination since it's saved and restored
+|
+.macro FILLCHAR str,count,char
+    move.l %A0,-(%SP)
+    move.l \str,-(%SP)
+    move.w \count,-(%SP)
+    move.w \char,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_FILLCHR(%A0),%A0
+    jsr (%A0)
+    addq.l #8,%SP
+    move.l (%SP)+,%A0
+.endm
+|
+|  Return the character at the specified position in a string
+|   CHARAT <string>,<position>,<character>
+|  Note that A0 cannot be used as a destination since it's saved and restored
+.macro CHAR_AT str,pos,char
+    move.l %A0,-(%SP)
+    move.l \str,-(%SP)
+    move.w \pos,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_CHARAT(%A0),%A0
+    jsr (%A0)
+    move.w (%SP)+,\char
+    addq.l #4,%SP
     move.l (%SP)+,%A0
 .endm
 |------------------------------------------------------------------------------

@@ -1,9 +1,9 @@
-|-----------------------------------------------------------
+|------------------------------------------------------------------------------
 | Title      : TRAP0 Handler
 | Written by : Brent Seidel
 | Date       : 6-Feb-2024
 | Description: Handler for TRAP0 exceptions
-|-----------------------------------------------------------
+|------------------------------------------------------------------------------
     .title Handler for TRAP0 exceptions
     .section OS_SECT,#execinstr,#alloc
     .include "OS-Macros.asm"

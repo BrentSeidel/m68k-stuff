@@ -1,9 +1,9 @@
-|-----------------------------------------------------------
+|------------------------------------------------------------------------------
 | Title      : Task 2
 | Written by : Brent Seidel
 | Date       : 2-Feb-2024
 | Description: Module for task #2
-|-----------------------------------------------------------
+|------------------------------------------------------------------------------
     .title Example Task 1
     .include "../Common/constants.asm"
     .INCLUDE "../Common/Macros.asm"
@@ -21,12 +21,12 @@ TASK2:                  |  first instruction of program
 |
 LOOP:
     ADD.L %D1,%D0
-    NUMSTR_L %D0,#INSTR,#8,16
+    NUMSTR_L %D0,#INSTR,#8,10
     PRINT #INSTR
     PRINT #NEWLINE
 |
     ADD.L %D0,%D1
-    NUMSTR_L %D1,#INSTR,#8,16
+    NUMSTR_L %D1,#INSTR,#8,10
     PRINT #INSTR
     PRINT #NEWLINE
 |

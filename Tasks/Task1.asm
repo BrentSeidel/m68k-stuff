@@ -1,9 +1,9 @@
-|-----------------------------------------------------------
+|------------------------------------------------------------------------------
 | Title      : Task 1
 | Written by : Brent Seidel
 | Date       : 8-Feb-2024
 | Description: Module for task #1
-|-----------------------------------------------------------
+|------------------------------------------------------------------------------
     .title Example Task 1
     .include "../Common/Constants.asm"
     .include "../Common/Macros.asm"
@@ -13,40 +13,9 @@
 START:                  |  first instruction of program
    .global START
 |
-|  Test BCD conversion
+|  Misc testing
 |
-    move.l #0xFFFFFFFF,-(%SP)
-    subq.l #8,%SP
-    move.l #LIBTBL,%A0
-    move.l LIB_LONGBCD(%A0),%A0
-    jsr (%A0)
-    move.l (%SP)+,%D0
-    move.l (%SP)+,%D1
-    addq.l #4,%SP
-|
-|  Test octal conversion
-|
-    move.l #NUMBER,-(%SP)
-    move.l #LIBTBL,%A0
-    move.l LIB_STROCT(%A0),%A0
-    jsr (%A0)
-    move.l (%SP)+,%D0
-|
-|  Test hexidecimal conversion
-|
-    move.l #NUMBER,-(%SP)
-    move.l #LIBTBL,%A0
-    move.l LIB_STRHEX(%A0),%A0
-    jsr (%A0)
-    move.l (%SP)+,%D0
-|
-|  Test decimal conversion
-|
-    move.l #NUMBER,-(%SP)
-    move.l #LIBTBL,%A0
-    move.l LIB_STRDEC(%A0),%A0
-    jsr (%A0)
-    move.l (%SP)+,%D0
+    CHAR_AT #MSG1,#10,%D0
 |
 |  Print some messages
 |
@@ -63,7 +32,7 @@ START:                  |  first instruction of program
     PRINT #NEWLINE
     SLEEP #20
 |
-    NUMSTR_L #1000000,#INSTR,#8,16
+    NUMSTR_L #12345678,#INSTR,#8,10
     PRINT #CVT3
     PRINT #INSTR
     PRINT #NEWLINE
@@ -86,14 +55,24 @@ START:                  |  first instruction of program
 |
 |  Find first space in string
 |
-    move.l #INSTR,-(%SP)
-    move.l #SPACE,-(%SP)
-    move.l #LIBTBL,%A0
-    move.l LIB_FINDCHR(%A0),%A0
-    jsr (%A0)
-    move.l (%SP)+,%D0
-    addq.l #4,%SP
-
+    FINDCAHR #INSTR,#SPACE,%D0
+|    move.l #INSTR,-(%SP)
+|    move.l #SPACE,-(%SP)
+|    move.l #LIBTBL,%A0
+|    move.l LIB_FINDCHR(%A0),%A0
+|    jsr (%A0)
+|    move.l (%SP)+,%D0
+|    addq.l #4,%SP
+|
+    NUMSTR_W %D0,#INSTR,#0,10
+    PRINT #MSG3
+    PRINT #INSTR
+    PRINT #NEWLINE
+0:
+    FILLCHAR #INSTR,%D0,#'*'
+    PRINT #INSTR
+    PRINT #NEWLINE
+    dbf %D0,0b
 |
 |  Exit the program
 |
@@ -112,7 +91,8 @@ START:                  |  first instruction of program
     TEXT TXT1,"Enter some text at the prompt below:\r\n"
     TEXT CVT1,"255 in decimal is "
     TEXT CVT2,"60000 in signed decimal is "
-    TEXT CVT3,"1000000 in hexidecimal is "
+    TEXT CVT3,"12345678 in decimal is "
+    TEXT MSG3,"First space is at character position "
     TEXT STAK,"Current SP is "
     TEXT NEWLINE,"\r\n"
     TEXT NUMBER,"1234567890ABCDEF"
