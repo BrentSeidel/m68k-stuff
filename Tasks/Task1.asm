@@ -50,8 +50,29 @@ START:                  |  first instruction of program
 |
 |  Echo it back out
 |
+    PRINT #MSG4
     PRINT #INSTR
-    PRINT #NEWLINE
+    PRINT #CLOSE
+|
+|  Trim the string
+|
+    move.l #INSTR,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_TRIMLS(%A0),%A0
+    jsr (%A0)
+    move.l #LIBTBL,%A0
+    move.l LIB_TRIMLZ(%A0),%A0
+    jsr (%A0)
+    move.l #LIBTBL,%A0
+    move.l LIB_TRIMTS(%A0),%A0
+    jsr (%A0)
+    move.l #LIBTBL,%A0
+    move.l LIB_TRIMTZ(%A0),%A0
+    jsr (%A0)
+    addq.l #4,%SP
+    PRINT #MSG5
+    PRINT #INSTR
+    PRINT #CLOSE
 |
 |  Find first space in string
 |
@@ -94,6 +115,9 @@ START:                  |  first instruction of program
     TEXT CVT3,"12345678 in decimal is "
     TEXT MSG3,"First space is at character position "
     TEXT STAK,"Current SP is "
+    TEXT MSG4,"Before trimming is <"
+    TEXT MSG5,"After trimming is <"
+    TEXT CLOSE,">\r\n"
     TEXT NEWLINE,"\r\n"
     TEXT NUMBER,"1234567890ABCDEF"
     .end  START              |  last line of source

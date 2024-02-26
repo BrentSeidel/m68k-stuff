@@ -37,6 +37,10 @@ LIBTBL:
     .long LONG_BCD
     .long FILL_CHR
     .long STR_CHAR
+    .long TRIM_TS
+    .long TRIM_TZ
+    .long TRIM_LS
+    .long TRIM_LZ
 |
 |  Error message to catch some jump table errors
 |
@@ -812,6 +816,144 @@ STR_CHAR:
     movem.l (%SP)+,%D1/%A0
     unlk %A6
     rts
+|
+|  Trim any trailing whitespace from a string.  Whitespace is considered
+|  to be any character less than 33 or greater than 126.  It is called
+|  with a string and the string is modified in place.
+|  Calling sequence:
+|  move.l string,-(%SP)
+|  jsr TRIM_TS
+|  addq.l #4,%SP
+|
+TRIM_TS:
+    .sbttl TRIM_TS - Trim trailing whitespace from a string
+    link %A6,#0
+    movem.l %D0-%D1/%A1,-(%SP)
+    move.l 8(%A6),%A0
+    clr.l %D0
+    move.w 2(%A0),%D0       |  Get string length
+    beq 0f                  |  Do nothing for zero length
+    addq.l #4,%A0           |  Point to start of string buffer
+    add.l %D0,%A0           |  Point to end of string buffer
+1:
+    move.b -(%A0),%D1       |  Get character
+    cmp.b #33,%D1
+    blt 2f
+    cmp.b #127,%D1
+    blt 0f
+2:
+    dbf %D0,1b
+0:
+    move.l 8(%A6),%A0
+    move.w %D0,2(%A0)
+    movem.l (%SP)+,%D0-%D1/%A0
+    unlk %A6
+    rts
+|
+|  Trim any trailing zeros from a string.  This is similar to TRIM_LS.
+|  It is called with a string and the string is modified in place.
+|  Calling sequence:
+|  move.l string,-(%SP)
+|  jsr TRIM_TZ
+|  addq.l #4,%SP
+|
+TRIM_TZ:
+    .sbttl TRIM_TZ - Trim trailing zeros from a string
+    link %A6,#0
+    movem.l %D0-%D1/%A1,-(%SP)
+    move.l 8(%A6),%A0       |  Address of string
+    clr.l %D0
+    move.w 2(%A0),%D0       |  Get string length
+    beq 0f                  |  Do nothing for zero length
+    addq.l #4,%A0           |  Point to start of string buffer
+    add.l %D0,%A0           |  Point to end of string buffer
+1:
+    move.b -(%A0),%D1       |  Get character
+    cmpb #'0',%D1
+    bne 0f
+    dbf %D0,1b
+0:
+    move.l 8(%A6),%A0
+    move.w %D0,2(%A0)
+    movem.l (%SP)+,%D0-%D1/%A0
+    unlk %A6
+    rts
+|
+|  Modifies the passed string to remove any whitespace at the beginning
+|  of the string.  Similar to TRIMTS
+|  Calling sequence:
+|  move.l string,-(%SP)
+|  jsr TRIM_LS
+|  addq.l #4,%SP
+|
+TRIM_LS:
+   .sbttl TRIM_LS - Trim leading whitespace from a string
+    link %A6,#0
+    movem.l %D0-%D1/%A0-%A1,-(%SP)
+    move.l 8(%A6),%A0       |  Address of string
+    move.l %A0,%A1          |  Copy string address
+    clr.l %D0
+    move.w 2(%A0),%D0       |  Get string length
+    beq 0f                  |  Do nothing if zero length
+    addq.l #4,%A0           |  Point to start of string buffer
+1:
+    move.b (%A0)+,%D1       |  Get character to test
+    cmp.b #33,%D1
+    blt 2f
+    cmp.b #127,%D1
+    blt 3f
+2:
+    dbf %D0,1b
+    move.w #0,2(%A1)        |  If no characters found, string length is zero.
+    bne 0f
+3:
+    subq.l #1,%A0           |  Move back to point to the new first character
+    move.w %D0,2(%A1)       |  Save updated length
+    addq.l #4,%A1           |  Point to start of string buffer
+4:
+    move.b (%A0)+,(%A1)+    |  Shift characters to start
+    dbf %D0,4b
+0:
+    movem.l (%SP)+,%D0-%D1/%A0-%A1
+    unlk %A6
+    rts
+|
+|  Modifies the passed string to remove any zeros at the beginning
+|  of the string.  Similar to TRIMTS
+|  Calling sequence:
+|  move.l string,-(%SP)
+|  jsr TRIM_LZ
+|  addq.l #4,%SP
+|
+TRIM_LZ:
+   .sbttl TRIM_LZ - Trim leading zeros from a string
+    link %A6,#0
+    movem.l %D0-%D1/%A0-%A1,-(%SP)
+    move.l 8(%A6),%A0       |  Address of string
+    move.l %A0,%A1          |  Copy string address
+    clr.l %D0
+    move.w 2(%A0),%D0       |  Get string length
+    beq 0f                  |  Do nothing if zero length
+    addq.l #4,%A0           |  Point to start of string buffer
+1:
+    move.b (%A0)+,%D1       |  Get character to test
+    cmpb #'0',%D1
+    bne 3f
+    dbf %D0,1b
+    move.w #0,2(%A1)        |  If no characters found, string length is zero.
+    bne 0f
+3:
+    subq.l #1,%A0           |  Move back to point to the new first character
+    move.w %D0,2(%A1)       |  Save updated length
+    addq.l #4,%A1           |  Point to start of string buffer
+4:
+    move.b (%A0)+,(%A1)+    |  Shift characters to start
+    dbf %D0,4b
+0:
+    movem.l (%SP)+,%D0-%D1/%A0-%A1
+    unlk %A6
+    rts
+|
 |------------------------------------------------------------------------------
 |  I/O operations
 |

@@ -30,9 +30,13 @@ and the user tasks.  It provides things like:
 hexidecimal for byte, word, and long number.
 * String input
 * String functions to assist in parsing string (in work)
+* I'm reimplementing some of the fuctions from my PDP-11 assembly language
+repository for the 68000 CPU.
 
 ## Future Plans
 Future plans include the following (subject to change)
 * Implement mass storage with a filesystem (possibilities include MS-DOS,
 CP/M, Minix, or other).
 * Add a CLI to the library
+* Add message passing to the OS kernel.
+* Add a buffer pool.  This will probably be needed to support other things.

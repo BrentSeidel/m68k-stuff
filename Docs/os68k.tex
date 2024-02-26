@@ -51,7 +51,7 @@ This is a collection of notes on a simple multi-tasking operating system for the
 
 Note that all statements are subject to change as the project develops.
 
-This is based on the 68000 simulator part of the Sim-CPU (\url{https://github.com/BrentSeidel/Sim-CPU}) project.  It is target towards a system with 16Mbytes of memory and no MMU.  The memory is divided into 16 one megabyte sections, the first (lowest) section is for the operating system and each task gets one section.  The gives a system that supports up to 15 user tasks plus the operating system.
+This is based on the 68000 simulator part of the Sim-CPU (\url{https://github.com/BrentSeidel/Sim-CPU}) project.  It is targeted towards a system with 16Mbytes of memory and no MMU.  The memory is divided into 16 one megabyte sections, the first (lowest) section is for the operating system and each task gets one section.  The gives a system that supports up to 15 user tasks plus the operating system.
 
 Simulated devices provided by Sim-CPU that are currently used are the clock to provide a periodic interrupt for tasking and the serial-telnet port for console I/O.  Simulated disks are not yet supported.
 
@@ -82,6 +82,9 @@ The clock has a settable rate for the periodic interrupts.  The rate is a byte s
 
 \subsubsection{Terminal Interfaces}
 Multiple terminal interfaces can be supported.  Right now, each interface has its own interrupt vector, but it should be possible to have a single vector where the service routine determines which interfaces are ready.
+
+\subsection{Scheduling}
+Currently, a simple round-robin scheduler is used.
 
 \subsection{System Calls}
 Currently, all system calls are handled by \verb|TRAP #0|.  The system call number and any parameters are pushed onto the stack prior to the call.  The following system calls are currently defined:

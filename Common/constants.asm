@@ -49,5 +49,9 @@
     .equ LIB_LONGBCD, 10*4
     .equ LIB_FILLCHR, 11*4
     .equ LIB_CHARAT,  12*4
+    .equ LIB_TRIMTS,  13*4
+    .equ LIB_TRIMTZ,  14*4
+    .equ LIB_TRIMLS,  15*4
+    .equ LIB_TRIMLZ,  16*4
 .list
 
