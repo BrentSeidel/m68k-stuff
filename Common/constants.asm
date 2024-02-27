@@ -53,5 +53,7 @@
     .equ LIB_TRIMTZ,  14*4
     .equ LIB_TRIMLS,  15*4
     .equ LIB_TRIMLZ,  16*4
+    .equ LIB_UPCASE,  17*4
+    .equ LIB_LOCASE,  18*4
 .list
 

@@ -56,20 +56,12 @@ START:                  |  first instruction of program
 |
 |  Trim the string
 |
-    move.l #INSTR,-(%SP)
-    move.l #LIBTBL,%A0
-    move.l LIB_TRIMLS(%A0),%A0
-    jsr (%A0)
-    move.l #LIBTBL,%A0
-    move.l LIB_TRIMLZ(%A0),%A0
-    jsr (%A0)
-    move.l #LIBTBL,%A0
-    move.l LIB_TRIMTS(%A0),%A0
-    jsr (%A0)
-    move.l #LIBTBL,%A0
-    move.l LIB_TRIMTZ(%A0),%A0
-    jsr (%A0)
-    addq.l #4,%SP
+    STR_TRIM LS,#INSTR
+    STR_TRIM LZ,#INSTR
+    STR_TRIM TS,#INSTR
+    STR_TRIM TZ,#INSTR
+    STR_UPCASE #INSTR
+    STR_LOCASE #INSTR
     PRINT #MSG5
     PRINT #INSTR
     PRINT #CLOSE

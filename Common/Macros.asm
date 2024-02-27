@@ -210,6 +210,64 @@
     addq.l #4,%SP
     move.l (%SP)+,%A0
 .endm
+|
+|  Macros for trimming leading/trailing zeros and spaces
+|   STR_TRIM <type>,<string>
+|  where type is one of TS,TZ,LS,LZ
+|  Note that A0 cannot be used as a destination since it's saved and restored
+.macro STR_TRIM type,str
+    move.l %A0,-(%SP)
+    move.l \str,-(%SP)
+    .ifc TS,\type
+      move.l #LIBTBL,%A0
+      move.l LIB_TRIMTS(%A0),%A0
+      jsr (%A0)
+    .endif
+    .ifc TZ,\type
+      move.l #LIBTBL,%A0
+      move.l LIB_TRIMTZ(%A0),%A0
+      jsr (%A0)
+    .endif
+    .ifc LS,\type
+      move.l #LIBTBL,%A0
+      move.l LIB_TRIMLS(%A0),%A0
+      jsr (%A0)
+    .endif
+    .ifc LZ,\type
+      move.l #LIBTBL,%A0
+      move.l LIB_TRIMLZ(%A0),%A0
+      jsr (%A0)
+    .endif
+    addq.l #4,%SP
+    move.l (%SP)+,%A0
+.endm
+|
+|  Macro to convert string to uppercase
+|   STR_UPCASE <str>
+|  Note that A0 cannot be used as a destination since it's saved and restored
+.macro STR_UPCASE str
+    move.l %A0,-(%SP)
+    move.l \str,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_UPCASE(%A0),%A0
+    jsr (%A0)
+    addq.l #4,%SP
+    move.l (%SP)+,%A0
+.endm
+|
+|  Macro to convert string to lowpercase
+|   STR_LOCASE <str>
+|  Note that A0 cannot be used as a destination since it's saved and restored
+.macro STR_LOCASE str
+    move.l %A0,-(%SP)
+    move.l \str,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_LOCASE(%A0),%A0
+    jsr (%A0)
+    addq.l #4,%SP
+    move.l (%SP)+,%A0
+.endm
+|
 |------------------------------------------------------------------------------
 |  I/O Macros
 |
