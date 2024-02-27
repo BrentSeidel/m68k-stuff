@@ -345,3 +345,80 @@ STR_LOCASE:
     movem.l (%SP)+,%D0-%D1/%A0
     unlk %A6
     rts
+|
+|------------------------------------------------------------------------------
+|  Copy one string to another.  If the destination is not long enough,
+|  the string is truncated.  Any old contents in the destination are
+|  overwritten.
+|  Calling sequence:
+|  move.l source,-(%SP)
+|  move.l destination,-(%SP)
+|  jsr STR_COPY
+|  addq.l #8,%SP
+|
+    .sbttl STR_COPY - Copy one string to another.
+STR_COPY:
+    .global STR_COPY
+    link %A6,#0
+    movem.l %D0/%A0-%A1,-(%SP)
+    move.l 8(%A6),%A1       |  Destination string
+    move.l 12(%A6),%A0      |  Source address
+    move.w 2(%A0),%D0       |  Source length
+    cmp.w (%A1),%D0         |  Compare with destination size
+    blt 0f
+    move.w (%A1),%D0        |  Use whichever is smaller
+0:
+    move.w %D0,2(%A1)       |  Set destination size
+    addq.l #4,%A0           |  Point to string buffers
+    addq.l #4,%A1
+1:
+    move.b (%A0)+,(%A1)+    |  Copy the string
+    dbf %D0,1b
+    movem.l (%SP)+,%D0/%A0-%A1
+    unlk %A6
+    rts
+|
+|------------------------------------------------------------------------------
+|  Appends the source string to the destination string.  The result is
+|  truncated to the maximum length of the destination, if needed.
+|  Calling sequence:
+|  Calling sequence:
+|  move.l source,-(%SP)
+|  move.l destination,-(%SP)
+|  jsr STR_APPEND
+|  addq.l #8,%SP
+|
+    .sbttl STR_APPEND - Append one string to another
+STR_APPEND:
+    .global STR_APPEND
+    link %A6,#0
+    movem.l %D0-%D2/%A0-%A1,-(%SP)
+    clr.l %D0
+    clr.l %D1
+    clr.l %D2
+    move.l 8(%A6),%A1       |  Destination string
+    move.l 12(%A6),%A0      |  Source string
+    move.w 2(%A0),%D0       |  Get source length
+    beq 0f                  |  Exit if zero
+    move.w (%A1),%D1        |  Max size of destination
+    move.w 2(%A1),%D2       |  Length of destination
+    sub.w %D2,%D1           |  Bytes remaining in destination
+    beq 0f                  |  Exit if none remaining
+    cmp.w %D0,%D1           |  Adjust length, if needed
+    bge 1f
+    move.w %D1,%D0
+1:
+    move.w %D2,%D1
+    add.w %D0,%D1           |  Final length
+    move.w %D1,2(%A1)       |  Set final length
+    addq.l #4,%A0           |  Point to start of source buffer
+    addq.l #4,%A1           |  Point to start of destintation buffer
+    add.l %D2,%A1           |  Point to end of destination buffer
+2:
+    move.b (%A0)+,(%A1)+
+    dbf %D0,2b
+0:
+    movem.l (%SP)+,%D0-%D2/%A0-%A1
+    unlk %A6
+    rts
+

@@ -50,9 +50,10 @@ START:                  |  first instruction of program
 |
 |  Echo it back out
 |
-    PRINT #MSG4
-    PRINT #INSTR
-    PRINT #CLOSE
+    STR_COPY #MSG4,#STR1
+    STR_APPEND #INSTR,#STR1
+    STR_APPEND #CLOSE,#STR1
+    PRINT #STR1
 |
 |  Trim the string
 |
@@ -69,13 +70,6 @@ START:                  |  first instruction of program
 |  Find first space in string
 |
     FINDCAHR #INSTR,#SPACE,%D0
-|    move.l #INSTR,-(%SP)
-|    move.l #SPACE,-(%SP)
-|    move.l #LIBTBL,%A0
-|    move.l LIB_FINDCHR(%A0),%A0
-|    jsr (%A0)
-|    move.l (%SP)+,%D0
-|    addq.l #4,%SP
 |
     NUMSTR_W %D0,#INSTR,#0,10
     PRINT #MSG3
@@ -98,6 +92,8 @@ START:                  |  first instruction of program
     .section DATA_SECT,#write,#alloc
 
     STRING INSTR,0x100
+    STRING STR1,0x100
+    STRING STR2,0x100
     TEXT PROMPT,"> "
     TEXT MSG1,"68000 Assembly language test program.\r\n"
     TEXT MSG2,"Simulated 68000 written in Ada\r\n"

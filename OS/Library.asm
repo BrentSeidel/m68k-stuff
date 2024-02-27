@@ -44,6 +44,8 @@ LIBTBL:
     .long TRIM_LZ
     .long STR_UPCASE
     .long STR_LOCASE
+    .long STR_COPY
+    .long STR_APPEND
 |
 |  Error message to catch some jump table errors
 |

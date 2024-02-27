@@ -255,7 +255,7 @@
     move.l (%SP)+,%A0
 .endm
 |
-|  Macro to convert string to lowpercase
+|  Macro to convert string to lowercase
 |   STR_LOCASE <str>
 |  Note that A0 cannot be used as a destination since it's saved and restored
 .macro STR_LOCASE str
@@ -265,6 +265,34 @@
     move.l LIB_LOCASE(%A0),%A0
     jsr (%A0)
     addq.l #4,%SP
+    move.l (%SP)+,%A0
+.endm
+|
+|  Macro to copy a string
+|   STR_COPY <source>,<destination>
+|  Note that A0 cannot be used as a destination since it's saved and restored
+.macro STR_COPY source,destination
+    move.l %A0,-(%SP)
+    move.l \source,-(%SP)
+    move.l \destination,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_STRCP(%A0),%A0
+    jsr (%A0)
+    addq.l #8,%SP
+    move.l (%SP)+,%A0
+.endm
+|
+|  Macro to append a string to another
+|   STR_APPEND <source>,<destination>
+|  Note that A0 cannot be used as a destination since it's saved and restored
+.macro STR_APPEND source,destination
+    move.l %A0,-(%SP)
+    move.l \source,-(%SP)
+    move.l \destination,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_STRAPP(%A0),%A0
+    jsr (%A0)
+    addq.l #8,%SP
     move.l (%SP)+,%A0
 .endm
 |
