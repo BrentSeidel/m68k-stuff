@@ -46,6 +46,8 @@ LIBTBL:
     .long STR_LOCASE
     .long STR_COPY
     .long STR_APPEND
+    .long STR_SUBSTR
+    .long STR_EQ
 |
 |  Error message to catch some jump table errors
 |

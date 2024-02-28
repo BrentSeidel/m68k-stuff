@@ -57,5 +57,7 @@
     .equ LIB_LOCASE,  18*4
     .equ LIB_STRCP,   19*4
     .equ LIB_STRAPP,  20*4
+    .equ LIB_SUBSTR,  21*4
+    .equ LIB_STREQ,   22*4
 .list
 

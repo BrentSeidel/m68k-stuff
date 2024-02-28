@@ -70,11 +70,37 @@ START:                  |  first instruction of program
 |  Find first space in string
 |
     FINDCAHR #INSTR,#SPACE,%D0
+    STR_SUBSTR #INSTR,#STR1,#0,%D0
+|   move.l #INSTR,-(%SP)
+|   move.l #STR1,-(%SP)
+|   move.w #0,-(%SP)
+|   move.w %D0,-(%SP)
+|   move.l #LIBTBL,%A0
+|   move.l LIB_SUBSTR(%A0),%A0
+|   jsr (%A0)
+|   addq.l #6,%SP
+|   addq.l #6,%SP
+   PRINT #MSG5
+   PRINT #STR1
+   PRINT #CLOSE
 |
     NUMSTR_W %D0,#INSTR,#0,10
     PRINT #MSG3
     PRINT #INSTR
     PRINT #NEWLINE
+|
+    move.l #STR1,-(%SP)
+    move.l #CMD1,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_STREQ(%A0),%A0
+    jsr (%A0)
+    addq.l #6,%SP
+    tst.w (%SP)+
+    beq 1f
+    PRINT #MSG7
+    bra 0f
+1:
+   PRINT #MSG6
 0:
     FILLCHAR #INSTR,%D0,#'*'
     PRINT #INSTR
@@ -108,5 +134,8 @@ START:                  |  first instruction of program
     TEXT CLOSE,">\r\n"
     TEXT NEWLINE,"\r\n"
     TEXT NUMBER,"1234567890ABCDEF"
+    TEXT CMD1,"here"
+    TEXT MSG6,"First word was 'here'\r\n"
+    TEXT MSG7,"First word was not 'here'\r\n"
     .end  START              |  last line of source
 

@@ -382,7 +382,6 @@ STR_COPY:
 |  Appends the source string to the destination string.  The result is
 |  truncated to the maximum length of the destination, if needed.
 |  Calling sequence:
-|  Calling sequence:
 |  move.l source,-(%SP)
 |  move.l destination,-(%SP)
 |  jsr STR_APPEND
@@ -419,6 +418,100 @@ STR_APPEND:
     dbf %D0,2b
 0:
     movem.l (%SP)+,%D0-%D2/%A0-%A1
+    unlk %A6
+    rts
+|
+|------------------------------------------------------------------------------
+|  This routine extracts a substring from one string and copies it to
+|  another string.  It is called with four parameters, the source and
+|  destination string, the starting character, and the number of
+|  characters to copy.  If the starting character is beyond the end of
+|  the source string, no characters will be copied.  If the last character
+|  (start plus count) is beyond the end of the source, copying will only
+|  happen to the end.  If the destination string is smaller than the amount
+|  to be copied, it will be truncated to the size of the destination.
+|  Calling sequence:
+|  move.l source,-(%SP)
+|  move.l dest,-(%SP)
+|  move.w start,-(%SP)
+|  move.w count,-(%SP)
+|  jsr SUB_STR
+|  addq.l #6,%SP
+|  addq.l #6,%SP
+|
+    .sbttl STR_SUBSTR - Generalized substring routine
+STR_SUBSTR:
+    .global STR_SUBSTR
+    link %A6,#0
+    movem.l %D0-%D2/%A0-%A1,-(%SP)
+    clr.l %D0
+    clr.l %D1
+    clr.l %D2
+    move.w 8(%A6),%D0       |  Count of bytes
+    beq 0f                  |  If no bytes to transfer, do nothing
+    move.w 10(%A6),%D1      |  Starting location
+    move.l 12(%A6),%A0      |  Destination string
+    move.l 16(%A6),%A1      |  Source string
+    move.w 2(%A1),%D2
+    cmp.w %D1,%D2           |  Compare starting location with length
+    blt 0f                  |  If start after length, do nothing
+    sub.w %D1,%D2           |  How many bytes in string after start
+    cmp.w %D0,%D2           |  Is length greater than remainder
+    bge 1f
+    move.w %D2,%D0          |  Reduce count, if necessary
+1:
+    move.w (%A0),%D2        |  Get destination max size
+    cmp.w %D0,%D2           |  Compare count with destination length
+    bge 2f
+    move.w %D2,%D0          |  Reduce count, if necessary
+2:
+    move.w %D0,2(%A0)       |  Set size of destination string
+    addq.l #4,%A0           |  Point to start of source buffer
+    addq.l #4,%A1           |  Point to start of destination buffer
+    add.l %D1,%A1           |  Point to start of substring
+3:
+    move.b (%A1)+,(%A0)+
+    dbf %D0,3b
+0:
+    movem.l (%SP)+,%D0-%D2/%A0-%A1
+    unlk %A6
+    rts
+|
+|------------------------------------------------------------------------------
+|  Compare if two string are equal.  The result is returned on the stack,
+|  where 0 indicates equality and 1 difference.  Different lengths of
+|  strings are not equal.  At some point, this may be extended to test
+|  ordering of the strings.
+|  Calling sequence:
+|  move.l str1,-(%SP)
+|  move.l str2,-(%SP)
+|  jsr STR_EQ
+|  addq.l #6,%SP
+|  tst.w (%SP)+
+    .sbttl STR_EQ - Tests if two string are equal or not
+STR_EQ:
+    .global STR_EQ
+    link %A6,#0
+    movem.l %D0/%A0-%A1,-(%SP)
+    move.l 8(%A6),%A0       |  String 2
+    move.l 12(%A6),%A1      |  String 1
+    clr.l %D0
+    move.w 2(%A0),%D0       |  Length of string 2
+    cmp.w 2(%A1),%D0        |  Compare the length
+    bne 2f
+    addq.l #4,%A0
+    addq.l #4,%A1
+    subq.w #1,%D0           |  Adjust count for loop
+0:
+    cmp.b (%A0)+,(%A1)+
+    dbf %D0,0b
+1:
+    clr.w 14(%A6)           |  Equal
+    bra 3f
+2:
+    move.w #1,14(%A6)       |  Not equal
+3:
+    movem.l (%SP)+,%D0/%A0-%A1
     unlk %A6
     rts
 

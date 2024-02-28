@@ -296,6 +296,23 @@
     move.l (%SP)+,%A0
 .endm
 |
+|  Macro to extract a substring from a string.
+|  SRT_SUBSTR <source>,<destination>,<start>,<count>
+|  Note that A0 cannot be used as a destination since it's saved and restored
+.macro STR_SUBSTR source,dest,start,count
+    move.l %A0,-(%SP)
+    move.l \source,-(%SP)
+    move.l \dest,-(%SP)
+    move.w \start,-(%SP)
+    move.w \count,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_SUBSTR(%A0),%A0
+    jsr (%A0)
+    addq.l #6,%SP
+    addq.l #6,%SP
+    move.l (%SP)+,%A0
+.endm
+|
 |------------------------------------------------------------------------------
 |  I/O Macros
 |
