@@ -8,6 +8,16 @@ in interesting patterns.  The second goal is to learn a bit about how
 to write an operating system kernel and provide services.  The third
 goal is maybe to have something uself.
 
+## Background
+Way back in the 1980s, I first encountered a multiuser operating system
+in the form of RSTS/E and later VAX/VMS.  I had a dream of writing my own
+operating system (BOS for Brent's Operating Systems).  This didn't happen.
+However, some ideas and things that I've picked up over the years may
+show up here.
+
+Currently, I am calling this OS-68000 (or OS68k for short) until I can
+come up with a better name.
+
 ## Current status
 ### Multitasking is Working
 Currently three tasks are defined:
@@ -29,9 +39,7 @@ and the user tasks.  It provides things like:
 * String to number (and vice-versa) conversions for octal, decimal, and
 hexidecimal for byte, word, and long number.
 * String input
-* String functions to assist in parsing string (in work)
-* I'm reimplementing some of the fuctions from my PDP-11 assembly language
-repository for the 68000 CPU.
+* String functions to assist in parsing string
 
 ## Future Plans
 Future plans include the following (subject to change)
@@ -40,3 +48,8 @@ CP/M, Minix, or other).
 * Add a CLI to the library
 * Add message passing to the OS kernel.
 * Add a buffer pool.  This will probably be needed to support other things.
+
+### Hardware
+I'd like to design and build a 680x0 based computer.  This probably won't
+happen due to the time and cost required, but would be an interesting
+project...

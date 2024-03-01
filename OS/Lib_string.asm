@@ -504,6 +504,7 @@ STR_EQ:
     subq.w #1,%D0           |  Adjust count for loop
 0:
     cmp.b (%A0)+,(%A1)+
+    bne 2f
     dbf %D0,0b
 1:
     clr.w 14(%A6)           |  Equal

@@ -31,8 +31,8 @@
 |
 .macro TEXT label,string
     .align 2
-\label: .hword 0f-\label-4
-    .hword 0f-\label-4
+\label: .hword (0f) - \label - 4
+    .hword (0f) - \label - 4
     .ascii "\string"
 0:
 .endm
@@ -120,7 +120,7 @@
 |   STRNUM <string>,<number>,<base>
 |
 .macro STRNUM str,num,base
-    move.l %A0,-%(SP)
+    move.l %A0,-(%SP)
     move.l #LIBTBL,%A0
     move.l \str,-(%SP)
     .if \base-8
@@ -143,10 +143,10 @@
 |  String manipulation macros
 |
 |  Get the max size of a string.
-|   STRMAX <string>,<destination>
+|   STR_MAX <string>,<destination>
 |  Note that A0 cannot be used as a destination since it's savedd and restored
 |
-.macro STRMAX str,dest
+.macro STR_MAX str,dest
     move.l %A0,-(%SP)    |  Save A0 since it is used
     move.l \str,%A0
     move.w (%A0),\dest
@@ -154,11 +154,11 @@
 .endm
 |
 |  Get the current length of a string
-|   STRLEN <string>,<destination>
+|   STR_LEN <string>,<destination>
 |  Note that A0 cannot be used as a destination since it's saved and restored
 |
-.macro STRLEN str,dest
-    move.l %A0,-(SP)    |  Save A0 since it is used
+.macro STR_LEN str,dest
+    move.l %A0,-(%SP)    |  Save A0 since it is used
     move.l \str,%A0
     move.w 2(%A0),\dest
     move.l (%SP)+,%A0
@@ -168,7 +168,7 @@
 |   FINDCHAR <string to search>,<character to find>,<destination for position>
 |  Note that A0 cannot be used as a destination since it's saved and restored
 |
-.macro FINDCAHR str,char,pos
+.macro FINDCHAR str,char,pos
     move.l %A0,-(%SP)
     move.l \str,-(%SP)
     move.l \char,-(%SP)
@@ -297,7 +297,7 @@
 .endm
 |
 |  Macro to extract a substring from a string.
-|  SRT_SUBSTR <source>,<destination>,<start>,<count>
+|   STR_SUBSTR <source>,<destination>,<start>,<count>
 |  Note that A0 cannot be used as a destination since it's saved and restored
 .macro STR_SUBSTR source,dest,start,count
     move.l %A0,-(%SP)
@@ -310,6 +310,22 @@
     jsr (%A0)
     addq.l #6,%SP
     addq.l #6,%SP
+    move.l (%SP)+,%A0
+.endm
+|
+|  Macro to test if two strings are equal.  Zero flag is set if equal and
+|  clear if not equal.
+|   STR_EQ <string1>,<string2>
+|  Note that A0 cannot be used as a destination since it's saved and restored
+.macro STR_EQ str1,str2
+    move.l %A0,-(%SP)
+    move.l \str1,-(%SP)
+    move.l \str2,-(%SP)
+    move.l #LIBTBL,%A0
+    move.l LIB_STREQ(%A0),%A0
+    jsr (%A0)
+    addq.l #6,%SP
+    tst.w (%SP)+
     move.l (%SP)+,%A0
 .endm
 |
