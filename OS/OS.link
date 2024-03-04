@@ -4,8 +4,9 @@ SECTIONS {
   HW_SECT   0x01000 : { *(HW_SECT) }
   OS_SECT   0x02000 : { *(OS_CODE) }
   OS_DATA   0x03000 : { *(OS_DATA) }
-  LIB_SECT  0x04000 : { *(LIB_SECT) }
-  LIB_DATA  0x05000 : { *(LIB_DATA) }
+  LIB_DATA  0x04000 : { *(LIB_DATA) }
+  LIB_SECT  0x05000 : { *(LIB_SECT) }
+  CLI_SECT  0x06000 : { Lib_cli.o(CLI_SECT) }
   OS_STACK  0x0C000 : { *(OS_STACK) }
   USR_STACK 0x0C400 : { *(USR_STACK) }
 }

@@ -13,7 +13,7 @@
 |  Bytes: Text of the string
 |
 |------------------------------------------------------------------------------
-|  String definition macros
+|  Data definition macros
 |
 |  Define space for a string.  The first argument is
 |  the label, the second is the maximum size.
@@ -35,6 +35,15 @@
     .hword (0f) - \label - 4
     .ascii "\string"
 0:
+.endm
+|
+|  Turn a section of memory (possibly on the stack) into a string.  It
+|  is initialized to a lenght of zero.  Location must be an address
+|  register containing the address of the string.
+|
+.macro MAKE_STR location,size
+   move.w \size,(\location)
+   clr.w 2(\location)
 .endm
 |------------------------------------------------------------------------------
 |  Number conversion macros
@@ -354,9 +363,9 @@
 |
 .macro INPUT str
     move.l %A0,-(%SP)
+    move.l \str,-(%SP)
     move.l #LIBTBL,%A0
     move.l LIB_GETSTR(%A0),%A0
-    move.l \str,-(%SP)
     jsr (%A0)
     addq.l #4,%SP
     move.l (%SP)+,%A0

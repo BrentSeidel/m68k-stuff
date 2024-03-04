@@ -9,9 +9,23 @@
     .include "../Common/Macros.asm"
 |
     .section CODE_SECT,#execinstr,#alloc
+    .equ INSTR,-0x108       |  Space for 0x100 byte string
+    .equ STR1,INSTR-0x108   |  Space for 0x100 byte string
+    .equ STR2,INSTR-0x108   |  Space for 0x100 byte string
+    .equ FRAME_END,STR2     |  Stack frame size
 |
-START:                  |  first instruction of program
-   .global START
+START:
+    .global START
+    LINK %A6,#FRAME_END
+|
+|  Initialize stack variables
+|
+    lea INSTR(%A6),%A1       |  Address of stack allocated INSTR
+    MAKE_STR %A1,#0x100
+    lea STR1(%A6),%A2        |  Address of stack allocated STR1
+    MAKE_STR %A2,#0x100
+    lea STR2(%A6),%A3        |  Address of stack allocated STR2
+    MAKE_STR %A3,#0x100
 |
 |  Print header messages
 |
@@ -22,32 +36,32 @@ START:                  |  first instruction of program
 |
 CLI_LOOP:
     PRINT #PROMPT
-    INPUT #INSTR
-    STR_TRIM LS,#INSTR
-    STR_TRIM TS,#INSTR
-    STR_LEN #INSTR,%D0
+    INPUT %A1
+    STR_TRIM LS,%A1
+    STR_TRIM TS,%A1
+    STR_LEN %A1,%D0
     tst.w %D0
     beq CLI_LOOP
-    FINDCHAR #INSTR,#SPACE,%D0
+    FINDCHAR %A1,#SPACE,%D0
     cmp.l #0x10000,%D0
     beq 1f
-    STR_SUBSTR #INSTR,#STR1,#0,%D0
+    STR_SUBSTR %A1,%A2,#0,%D0
     bra 2f
 1:
-    STR_COPY #INSTR,#STR1
+    STR_COPY %A1,%A2
 2:
-    STR_UPCASE #STR1
+    STR_UPCASE %A2
     PRINT #MSG3
-    PRINT #STR1
+    PRINT %A2
     PRINT #END_MSG
 |
 |  Check command
 |
-    STR_EQ #STR1,#CMD1
+    STR_EQ %A2,#CMD1
     beq SQUARE
-    STR_EQ #STR1,#CMD2
+    STR_EQ %A2,#CMD2
     beq TRIANGLE
-    STR_EQ #STR1,#CMD3
+    STR_EQ %A2,#CMD3
     beq EXIT_PROGRAM
 |
     PRINT #ERR1              |  Command not recognized
@@ -56,16 +70,16 @@ CLI_LOOP:
 SQUARE:
     PRINT #MSG5
     addq.w #1,%D0
-    STR_LEN #INSTR,%D1
-    STR_SUBSTR #INSTR,#STR2,%D0,%D1
-    STR_TRIM LS,#STR2
+    STR_LEN %A1,%D1
+    STR_SUBSTR %A1,%A3,%D0,%D1
+    STR_TRIM LS,%A3
     PRINT #MSG4
-    PRINT #STR2
+    PRINT %A3
     PRINT #END_MSG
-    STRNUM #STR2,%D0,10
-    FILLCHAR #INSTR,%D0,#'*'
+    STRNUM %A3,%D0,10
+    FILLCHAR %A1,%D0,#'*'
 0:
-    PRINT #INSTR
+    PRINT %A1
     PRINT #NEWLINE
     dbf %D0,0b
     bra CLI_LOOP
@@ -73,33 +87,34 @@ SQUARE:
 TRIANGLE:
     PRINT #MSG6
     addq.w #1,%D0
-    STR_LEN #INSTR,%D1
-    STR_SUBSTR #INSTR,#STR2,%D0,%D1
-    STR_TRIM LS,#STR2
+    STR_LEN %A1,%D1
+    STR_SUBSTR %A1,%A3,%D0,%D1
+    STR_TRIM LS,%A3
     PRINT #MSG4
-    PRINT #STR2
+    PRINT %A3
     PRINT #END_MSG
-    STRNUM #STR2,%D0,10
+    STRNUM %A3,%D0,10
 0:
-    FILLCHAR #INSTR,%D0,#'*'
-    PRINT #INSTR
+    FILLCHAR %A1,%D0,#'*'
+    PRINT %A1
     PRINT #NEWLINE
     dbf %D0,0b
     bra CLI_LOOP
 |
 EXIT_PROGRAM:
-    PRINT #BYE
-    move.w #SYS_SUTDOWN,-(%SP)
-    trap #0
-    bra .               |  If exit doesn't work, wait in an infinite loop
+    PRINT #BYE              |  Print closing message
+    unlk %A6                |  Clean up stack
+    rts                     |  Return to CLI
+|    move.w #SYS_SUTDOWN,-(%SP)
+|    trap #0
+|    bra .               |  If exit doesn't work, wait in an infinite loop
 |==============================================================================
 |  Data section for main code
 |
     .section DATA_SECT,#write,#alloc
 
-    STRING INSTR,0x100
-    STRING STR1,0x100
-    STRING STR2,0x100
+|    STRING STR1,0x100
+|    STRING STR2,0x100
     TEXT PROMPT,"> "
     TEXT MSG1,"68000 Assembly language test program.\r\n"
     TEXT MSG2,"Simulated 68000 written in Ada\r\n"

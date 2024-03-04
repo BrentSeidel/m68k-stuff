@@ -202,8 +202,10 @@ TASKTBL:
 |  related data.
 |
 TCB0: TCB NULLTASK,USRSTK,0
-TCB1: TCB 0x100000,0x200000,TTY0DEV
-TCB2: TCB 0x200000,0x300000,TTY1DEV
+|TCB1: TCB 0x100000,0x200000,TTY0DEV
+|TCB2: TCB 0x200000,0x300000,TTY1DEV
+TCB1: TCB CLI_ENTRY,0x200000,TTY0DEV
+TCB2: TCB CLI_ENTRY,0x300000,TTY1DEV
 |
 |  Table for TTY devices.  The device number indexes to a pointer to the device
 |  data.
@@ -272,15 +274,18 @@ CLEANUP:
     STOP #0x2000
     BRA .
 |
+|------------------------------------------------------------------------------
 |  The null task.  Use this when no other task can be run
 |
 NULLTASK:
+    .global NULLTASK
     MOVE.L #0x1000,%A0
 0:
     TST (%A0)+
     CMP.L #0x00FFFF00,%A0
     BEQ NULLTASK
     BRA 0b
+|------------------------------------------------------------------------------
 |
 |  Set an exception vector
 |  Input: A0 is the address of the handler
@@ -296,6 +301,7 @@ SETVEC:
     MOVE.L (%SP)+,%A1
     RTS
 |
+|------------------------------------------------------------------------------
 |  Save and restore context.
 |  NOTE: It is assumed that the user programs are operating in user
 |        mode and the operating system is in supervisor mode.
@@ -324,6 +330,7 @@ CTXSAVE:
     move.l TCB_A6(%A6),%A6       |  Restore A6
     RTS
 |
+|------------------------------------------------------------------------------
 |  Schedule which task to run next
 |  Look for the next task in the table that has status cleared.
 |  Start with the next task after the current task, looping back
@@ -350,21 +357,23 @@ SCHEDULE:
     BNE 1f
     MOVEQ.L #1,%D0          |  Wrap to start of list
     BRA 4f
-1:
+1:                          |  Loop to scan through task table
     ADDQ.L #1,%D0
 4:
     MOVE.L %D0,%A0
     ADD.L %A0,%A0
     ADD.L %A0,%A0           |  Multiply by four to use as index
     MOVE.L TASKTBL(%A0),%A0 |  Address of task block
+    beq 2f                  |  If no task block, end of table is reached.
+                            |  Just use task 0.
     TST.L TCB_STAT0(%A0)
     BEQ 3f                  |  Found a task to select
     CMP.W CURRTASK,%D0
     BEQ 2f                  |  No candidate was found
-    CMP.W %D0,%D1
-    BNE 1b
-    ADDQ.L #1,%D0           |  Point to next task
-    BRA 1b
+    CMP.W %D0,%D1           |  Check for end of list
+    BNE 1b                  |  Loop, if not
+    moveq.l #1,%D0          |  Go back to check task 1, if so
+    bra 4b
 2:
     CLR.L %D0               |  If no task found, use task 0
 3:

@@ -33,7 +33,7 @@
 |
 |  Library entry point
 |
-    .equ LIBTBL,0x4000
+    .equ LIBTBL,0x5000
 |
 |  Library jump table offsets
 |
