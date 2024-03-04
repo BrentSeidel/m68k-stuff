@@ -176,6 +176,7 @@ CLKCOUNT:
 |  task that runs when no other task can).
 |
     .equ MAXTASK, 3
+    .global MAXTASK
 CURRTASK:
     .global CURRTASK
     .hword 1

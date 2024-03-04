@@ -6,6 +6,7 @@
 |------------------------------------------------------------------------------
     .include "../Common/constants.asm"
     .include "../Common/Macros.asm"
+    .include "OS-Macros.asm"
 |==============================================================================
 |  Data section.
 |
@@ -16,10 +17,15 @@
     .global PROMPT
     TEXT ERR_COMMAND,"Unrecognized command <"
     TEXT MSG_END,">\r\n"
+    TEXT STR_NEWLINE,"\r\n"
     TEXT CMD_START,"START"
     TEXT CMD_SHUTDOWN,"SHUTDOWN"
     TEXT CMD_STATUS,"STATUS"
     TEXT BYE,"System shutting down - Good-bye.\r\n"
+    TEXT STAT0,"Task status:\r\n"
+    TEXT STAT1,"  Ready\r\n"
+    TEXT STAT2,"  Wait\r\n"
+    TEXT STAT3,"  Current\r\n"
 |
 |  Code section.
 |
@@ -118,5 +124,31 @@ SHUTDOWN_COMMAND:
     trap #0
     bra .               |  If exit doesn't work, wait in an infinite loop
 STATUS_COMMAND:
+    PRINT #STAT0
+    move.w #MAXTASK,%D0
+    subq.w #1,%D0
+    clr.l %D1
+    clr.l %D2
+0:
+    NUMSTR_W %D1,%A3,#0,10
+    PRINT %A3
+    cmp.w CURRTASK,%D1
+    bne 2f
+    PRINT #STAT3
+    bra 1f
+2:
+    move.l %D2,%A5
+    move.l TASKTBL(%A5),%A5
+    tst.l TCB_STAT0(%A5)
+    beq 3f
+    PRINT #STAT2
+    bra 1f
+3:
+    PRINT #STAT1
+1:
+    addq.l #1,%D1
+    addq.l #4,%D2
+    dbf %D0,0b
+    PRINT #STR_NEWLINE
     bra CMD_LOOP
 
