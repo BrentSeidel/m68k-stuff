@@ -16,16 +16,22 @@
     TEXT PROMPT,"OS> "
     .global PROMPT
     TEXT ERR_COMMAND,"Unrecognized command <"
+    TEXT ERR_NOSLEEP,"Sleep time not given.\r\n"
     TEXT MSG_END,">\r\n"
     TEXT STR_NEWLINE,"\r\n"
     TEXT CMD_START,"START"
     TEXT CMD_SHUTDOWN,"SHUTDOWN"
     TEXT CMD_STATUS,"STATUS"
+    TEXT CMD_SLEEP,"SLEEP"
     TEXT BYE,"System shutting down - Good-bye.\r\n"
     TEXT STAT0,"Task status:\r\n"
-    TEXT STAT1,"  Ready\r\n"
-    TEXT STAT2,"  Wait\r\n"
-    TEXT STAT3,"  Current\r\n"
+    TEXT STAT_READY,"  Ready\r\n"
+    TEXT STAT_IO_WAIT,"  I/O Wait\r\n"
+    TEXT STAT_SLEEP,"  Sleep  "
+    TEXT STAT_TERMINATE,"  Task terminated\r\n"
+    TEXT STAT_UNKNOWN,"  Unknown wait\r\n"
+    TEXT STAT_CURR,"  Current\r\n"
+    TEXT TICKS," ticks\r\n"
 |
 |  Code section.
 |
@@ -94,6 +100,8 @@ CMD_LOOP:
     beq SHUTDOWN_COMMAND
     STR_EQ %A2,#CMD_STATUS
     beq STATUS_COMMAND
+    STR_EQ %A2,#CMD_SLEEP
+    beq SLEEP_COMMAND
 |
 |  Command not found
 |
@@ -110,6 +118,8 @@ TASK0:
 |
 |  Process commands
 |
+|  Start task program
+|
 START_COMMAND:              |  Determine entry point for the current task
     clr.l %D0
     move.w CURRTASK,%D0
@@ -118,11 +128,17 @@ START_COMMAND:              |  Determine entry point for the current task
     move.l #CMD_LOOP,-(%SP) |  Save so that a RTS can go back to the command loop
     move.l %D0,%A0
     jmp (%A0)               |  Jump to task entry point
+|
+|  Shutdown the system
+|
 SHUTDOWN_COMMAND:
     PRINT #BYE
     move.w #SYS_SUTDOWN,-(%SP)
     trap #0
     bra .               |  If exit doesn't work, wait in an infinite loop
+|
+|  Display some status information
+|
 STATUS_COMMAND:
     PRINT #STAT0
     move.w #MAXTASK,%D0
@@ -134,17 +150,17 @@ STATUS_COMMAND:
     PRINT %A3
     cmp.w CURRTASK,%D1
     bne 2f
-    PRINT #STAT3
+    PRINT #STAT_CURR
     bra 1f
 2:
     move.l %D2,%A5
     move.l TASKTBL(%A5),%A5
     tst.l TCB_STAT0(%A5)
     beq 3f
-    PRINT #STAT2
+    bsr STAT_DECODE
     bra 1f
 3:
-    PRINT #STAT1
+    PRINT #STAT_READY
 1:
     addq.l #1,%D1
     addq.l #4,%D2
@@ -152,3 +168,43 @@ STATUS_COMMAND:
     PRINT #STR_NEWLINE
     bra CMD_LOOP
 
+STAT_DECODE:
+    btst #TCB_FLG_IO,TCB_STAT0(%A5)
+    beq 1f
+    PRINT #STAT_IO_WAIT
+    bra 0f
+1:
+    btst #TCB_FLG_SLEEP,TCB_STAT0(%A5)
+    beq 2f
+    PRINT #STAT_SLEEP
+    move.l TCB_SLEEP(%A5),%D2
+    NUMSTR_L %D2,%A3,#0,10
+    PRINT %A3
+    PRINT #NEWLINE
+    bra 0f
+2:
+    btst #TCB_FLG_EXIT,TCB_STAT0(%A5)
+    beq 3f
+    PRINT #STAT_TERMINATE
+    bra 0f
+3:
+    PRINT #STAT_UNKNOWN
+0:
+    rts
+|
+|  Sleep for a specified number of ticks
+|
+SLEEP_COMMAND:
+    FINDCHAR %A1,#SPACE,%D0
+    cmp.l #0x10000,%D0
+    beq 1f
+    STR_LEN %A1,%D1
+    STR_SUBSTR %A1,%A3,%D0,%D1
+    STR_TRIM LS,%A3
+    STRNUM %A3,%D0,10
+    SLEEP %D0
+    bra 0f
+1:
+    PRINT #ERR_NOSLEEP
+0:
+    bra CMD_LOOP
