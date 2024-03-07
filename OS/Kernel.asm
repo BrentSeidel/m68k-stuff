@@ -22,15 +22,18 @@
 |
     .section HW_PORTS,#write,#alloc
 CLKSTAT:               |  Clock status and control
-    .byte 0
+    .dc.b 0
 CLKRATE:               |  Clock interval
-    .byte 0
+    .dc.b 0
 TTY0BASE:
-    .byte 0            |  Console status (LSB indicates data ready to read)
-    .byte 0            |  Console data
+    .dc.b 0            |  Console status (LSB indicates data ready to read)
+    .dc.b 0            |  Console data
 TTY1BASE:
-    .byte 0            |  Console status (LSB indicates data ready to read)
-    .byte 0            |  Console data
+    .dc.b 0            |  Console status (LSB indicates data ready to read)
+    .dc.b 0            |  Console data
+TTY2BASE:
+    .dc.b 0            |  Console status (LSB indicates data ready to read)
+    .dc.b 0            |  Console data
 |==============================================================================
 |  Hardware Abstraction Layer section
 |
@@ -46,10 +49,10 @@ PUTSTR:
     GET_TCB %A1
     MOVE.L TCB_CON(%A1),%A1   |  Pointer to console device block
     MOVE.L DCB_PORT(%A1),%A1
-    ADDQ #2,%A0
+    addq.l #2,%A0           |  Point to string size
     CLR.L %D0
-    MOVE.W (%A0)+,%D0      |  Get length of string
-    beq 1f                 |  Do nothing if zero length
+    move.w (%A0)+,%D0       |  Get length of string
+    beq 1f                  |  Do nothing if zero length
     SUBQ.W #1,%D0
 
 0:
@@ -148,12 +151,23 @@ TTY0HANDLE:            |  65-TTY0 handler
     rte
 |
 |------------------------------------------------------------------------------
-TTY1HANDLE:            |  66-TTY0 handler
+TTY1HANDLE:            |  66-TTY1 handler
     move.l %A0,-(%SP)
     move.l #TASKTBL,%A0
     move.l 8(%A0),%A0       |  Get TCB for task 2
     bclr #TCB_FLG_IO,TCB_STAT0(%A0) |  Clear the console wait bit
     move.l TCB_CON(%A0),%A0 |  Get console DCB for task 2
+    bsr RX_CHAR
+    move.l (%SP)+,%A0
+    rte
+|
+|------------------------------------------------------------------------------
+TTY2HANDLE:            |  67-TTY2 handler
+    move.l %A0,-(%SP)
+    move.l #TASKTBL,%A0
+    move.l 12(%A0),%A0       |  Get TCB for task 3
+    bclr #TCB_FLG_IO,TCB_STAT0(%A0) |  Clear the console wait bit
+    move.l TCB_CON(%A0),%A0 |  Get console DCB for task 3
     bsr RX_CHAR
     move.l (%SP)+,%A0
     rte
@@ -175,53 +189,54 @@ CLKCOUNT:
 |  There are places for up to 16 possible tasks (including the null
 |  task that runs when no other task can).
 |
-    .equ MAXTASK, 3
+    .equ MAXTASK, 4
     .global MAXTASK
 CURRTASK:
     .global CURRTASK
-    .hword 1
+    .dc.w 1
 TASKTBL:
     .global TASKTBL
-    .long TCB0          |  Task 0 (null task)
-    .long TCB1          |  Task 1
-    .long TCB2          |  Task 2
-    .long 0             |  No task 3
-    .long 0             |  No task 4
-    .long 0             |  No task 5
-    .long 0             |  No task 6
-    .long 0             |  No task 7
-    .long 0             |  No task 8
-    .long 0             |  No task 9
-    .long 0             |  No task 10
-    .long 0             |  No task 11
-    .long 0             |  No task 12
-    .long 0             |  No task 13
-    .long 0             |  No task 14
-    .long 0             |  No task 15
+    .dc.l TCB0          |  Task 0 (null task)
+    .dc.l TCB1          |  Task 1
+    .dc.l TCB2          |  Task 2
+    .dc.l TCB3          |  Task 3
+    .dc.l 0             |  No task 4
+    .dc.l 0             |  No task 5
+    .dc.l 0             |  No task 6
+    .dc.l 0             |  No task 7
+    .dc.l 0             |  No task 8
+    .dc.l 0             |  No task 9
+    .dc.l 0             |  No task 10
+    .dc.l 0             |  No task 11
+    .dc.l 0             |  No task 12
+    .dc.l 0             |  No task 13
+    .dc.l 0             |  No task 14
+    .dc.l 0             |  No task 15
 |
 |  The task data contains the data for context switching and other task
 |  related data.
 |
 TCB0: TCB NULLTASK,USRSTK,0
-|TCB1: TCB 0x100000,0x200000,TTY0DEV
-|TCB2: TCB 0x200000,0x300000,TTY1DEV
 TCB1: TCB CLI_ENTRY,0x200000,TTY0DEV
 TCB2: TCB CLI_ENTRY,0x300000,TTY1DEV
+TCB3: TCB CLI_ENTRY,0x400000,TTY2DEV
 |
 |  Table for TTY devices.  The device number indexes to a pointer to the device
 |  data.
 |
 TTYCNT:
-    .word 2             | Number of TTY devices available
+    .dc.w 3             | Number of TTY devices available
 TTYTBL:
-    .long TTY0DEV
-    .long TTY1DEV
+    .dc.l TTY0DEV
+    .dc.l TTY1DEV
+    .dc.l TTY2DEV
 |
-|  Data for TTY0 device.  This consists of device port addresses, a driver index,
-|  a fill pointer, an empty pointer and a 256 byte buffer.
+|  Data for TTY devices.  These consists of device port addresses, a
+|   driver index, a fill pointer, an empty pointer and a 256 byte buffer.
 |
-TTY0DEV: DCB TTY0BASE,0
-TTY1DEV: DCB TTY1BASE,1
+TTY0DEV: DCB TTY0BASE,0,TCB1
+TTY1DEV: DCB TTY1BASE,1,TCB2
+TTY2DEV: DCB TTY2BASE,2,TCB3
 |==============================================================================
 |  Operating system, such as it is.
 |
@@ -242,6 +257,7 @@ INIT:
     SET_VECTOR #64,#CLOCKHANDLE
     SET_VECTOR #65,#TTY0HANDLE
     SET_VECTOR #66,#TTY1HANDLE
+    SET_VECTOR #67,#TTY2HANDLE
 |
 |  Start the clock
 |
@@ -252,6 +268,7 @@ INIT:
 |
     move.b #0x14,TTY0BASE
     move.b #0x14,TTY1BASE
+    move.b #0x14,TTY2BASE
 |
 |  Run the user program
 |
@@ -347,16 +364,16 @@ SCHEDULE:
     CLR.L %D0
     CLR.L %D1
     MOVE.W CURRTASK,%D0     |  Current task number
-    TST.W %D0
+    tst.w %D0               |  Check if the current task is the null task
     BNE 0f
     MOVEQ.L #1,%D0          |  If current task is 0, set it to 1
-    MOVE.W %D0,CURRTASK
+    move.w %D0,CURRTASK     |  Update memory as it is used later
 0:
     MOVE.W #MAXTASK,%D1
     SUBQ.W #1,%D1           |  Max task number
-    CMP.W %D0,%D1
-    BNE 1f
-    MOVEQ.L #1,%D0          |  Wrap to start of list
+    cmp.w %D0,%D1           |  Check if current task is max task
+    bne 1f                  |  If not, start loop to find next task
+    moveq.l #1,%D0          |  Otherwise, wrap to start of list
     BRA 4f
 1:                          |  Loop to scan through task table
     ADDQ.L #1,%D0
@@ -456,11 +473,11 @@ CLOCKHANDLE:            |  64-Clock handler
     MOVE.L #TASKTBL,%A0
 2:
     MOVE.L (%A0)+,%A1
-    BTST #1,70(%A1)
+    btst #TCB_FLG_SLEEP,TCB_STAT0(%A1)
     BEQ 3f              |  If sleep flag is not set
-    SUBQ.L #1,74(%A1)
+    subq.l #1,TCB_SLEEP(%A1)
     BNE 3f              |  If count has not reached zero
-    BCLR #TCB_FLG_SLEEP,70(%A1) |  Clear sleep flag
+    bclr #TCB_FLG_SLEEP,TCB_STAT0(%A1) |  Clear sleep flag
 3:
     DBF %D0,2b
     MOVEM.L (%SP)+,%D0-%D1/%A0-%A1

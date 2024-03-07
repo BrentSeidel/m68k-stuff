@@ -7,7 +7,10 @@ echo "Assembling source for Task 1"
 echo "Assembling source for Task 2"
 /opt/local/m68k-elf/bin/as -alms -m68000 Task2.asm -o Task2.o > Task2.list
 #
+echo "Assembling source for Task 3"
+/opt/local/m68k-elf/bin/as -alms -m68000 Task3.asm -o Task3.o > Task3.list
+#
 echo "Linking Tasks"
-/opt/local/m68k-elf/bin/ld -o Tasks Task1.o Task2.o -T Tasks.link --Map Tasks.map
+/opt/local/m68k-elf/bin/ld -o Tasks Task1.o Task2.o Task3.o -T Tasks.link --Map Tasks.map
 /opt/local/m68k-elf/bin/objcopy -O srec Tasks Tasks.S
 echo "S-record file produced"

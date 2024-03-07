@@ -103,8 +103,9 @@
 |     0/0 - Buffer full
 |     0/1 - Buffer empty
 |
-.macro DCB base,unit
-    .long \base         |  Data port
+.macro DCB base,unit,owner
+    .long \owner        |  Owning TCB (0)
+    .long \base         |  Data port (4)
     .byte 2             |  Flag word 0 (4)  Buffer empty flag is set
     .byte 0             |  Flag word 1 (5)
     .byte 0             |  Flag word 2 (6)
@@ -118,16 +119,17 @@
 |
 |  Offsets into DCB
 |
-    .equ DCB_PORT,      0
-    .equ DCB_FLAG0,     4
-    .equ DCB_FLAG1,     5
-    .equ DCB_FLAG2,     6
-    .equ DCB_FLAG3,     7
-    .equ DCB_UNIT,      8
-    .equ DCB_DRIVER,   10
-    .equ DCB_FILL,     12
-    .equ DCB_EMPTY,    13
-    .equ DCB_BUFFER,   14
+    .equ DCB_OWN,       0
+    .equ DCB_PORT,      4
+    .equ DCB_FLAG0,     8
+    .equ DCB_FLAG1,     9
+    .equ DCB_FLAG2,    10
+    .equ DCB_FLAG3,    11
+    .equ DCB_UNIT,     12
+    .equ DCB_DRIVER,   14
+    .equ DCB_FILL,     16
+    .equ DCB_EMPTY,    17
+    .equ DCB_BUFFER,   18
 |
 |  Define DCB flags
 |
