@@ -136,6 +136,10 @@
     .equ DCB_BUFF_FULL,  0
     .equ DCB_BUFF_EMPTY, 1
 |
+|  Defined driver numbers
+|
+   .equ DRV_SLTTY, 1
+|
 |  Set an exception vector.  Registers %D0 and %A0 are used.
 |
 .macro SET_VECTOR num,handler

@@ -47,20 +47,10 @@ PUTSTR:
     .global PUTSTR
     MOVEM.L %D0/%A0-%A1,-(%SP)
     GET_TCB %A1
-    MOVE.L TCB_CON(%A1),%A1   |  Pointer to console device block
-    MOVE.L DCB_PORT(%A1),%A1
-    addq.l #2,%A0           |  Point to string size
-    CLR.L %D0
-    move.w (%A0)+,%D0       |  Get length of string
-    beq 1f                  |  Do nothing if zero length
-    SUBQ.W #1,%D0
-
-0:
-    MOVE.B (%A0)+,1(%A1)
-    DBF %D0,0b
-1:
-    MOVEM.L (%SP)+,%D0/%A0-%A1
-    RTS
+    MOVE.L TCB_CON(%A1),%A1 |  Pointer to device block
+    cmp.w #DRV_SLTTY,DCB_DRIVER(%A1)
+    beq SLTTYPUTS
+    stop #0                 |  Driver not found
 |
 |  Put a single character to the console.
 |  Input: Character in D0.B
@@ -70,11 +60,10 @@ PUTCHAR:
     .global PUTCHAR
     MOVE.L %A1,-(%SP)
     GET_TCB %A1
-    MOVE.L TCB_CON(%A1),%A1   |  Pointer to console device block
-    MOVE.L DCB_PORT(%A1),%A1
-    MOVE.B %D0,1(%A1)
-    MOVE.L (%SP)+,%A1
-    RTS
+    MOVE.L TCB_CON(%A1),%A1 |  Pointer to device block
+    cmp.w #DRV_SLTTY,DCB_DRIVER(%A1)
+    beq SLTTYPUTC
+    stop #0                 |  Driver not found
 |
 |  Get a single character from the console.  Checks the DCB buffer to
 |  see if it is empty or not.  If not, returns the next character,
@@ -85,6 +74,41 @@ PUTCHAR:
 GETCHAR:
     .global GETCHAR
     movem.l %D1-%D2/%A1,-(%SP)
+    cmp.w #DRV_SLTTY,DCB_DRIVER(%A0)
+    beq SLTTYGETC
+    stop #0                 |  Driver not found
+|
+|==============================================================================
+|  Device specific operations for a single line TTY interface
+|
+|  Sends a single character to the single line TTY device pointed to
+|  by %A1.
+|
+SLTTYPUTC:
+    move.l DCB_PORT(%A1),%A1
+    move.b %D0,1(%A1)
+    move.l (%SP)+,%A1
+    rts
+|
+|  Sends a string to the single line TTY device pointed to by %A1
+|
+SLTTYPUTS:
+    move.l DCB_PORT(%A1),%A1
+    addq.l #2,%A0           |  Point to string size
+    clr.l %D0
+    move.w (%A0)+,%D0       |  Get length of string
+    beq 1f                  |  Do nothing if zero length
+    subq.w #1,%D0
+0:
+    move.b (%A0)+,1(%A1)
+    dbf %D0,0b
+1:
+    movem.l (%SP)+,%D0/%A0-%A1
+    rts
+|
+|  Gets a character from the single line TTY device pointed to by %A0
+|
+SLTTYGETC:
     btst #DCB_BUFF_EMPTY,DCB_FLAG0(%A0)
     beq 0f                      |  If buffer is empty, return invalid character
       move.w #0x100,%D0
@@ -109,11 +133,11 @@ GETCHAR:
     movem.l (%SP)+,%D1-%D2/%A1
     rts
 |
-|------------------------------------------------------------------------------
 |  Process receiving a character.  Called from interrupt service routine
 |  with A0 pointing to the DCB.  It loops, reading characters, until no
 |  more are ready.
-RX_CHAR:
+|
+SLTTYRX_CHAR:
     movem.l %D0-%D1/%A1-%A2,-(%SP)
     clr.l %D0
     clr.l %d1
@@ -139,14 +163,28 @@ RX_CHAR:
     movem.l (%SP)+,%D0-%D1/%A1-%A2
     rts
 |
+|  Perform any device and DCB initializations needed.  Address of DCB
+|  passed in in %A0.
+|
+SLTTYINIT:
+    move.b #0,DCB_FILL(%A0)     |  Clear buffer pointers
+    move.b #0,DCB_EMPTY(%A0)
+    move.b #2,DCB_FLAG0(%A0)    |  Set flag to indicate empty buffer
+    move.l DCB_PORT(%A0),%A0
+    move.b #0x14,(%A0)       |  Reset interface and enable interrupts
+    rts
+|
 |------------------------------------------------------------------------------
+|  Handlers for single line TTY interrupts.  Each device has its own
+|  interrupt.
+|
 TTY0HANDLE:            |  65-TTY0 handler
     move.l %A0,-(%SP)
     move.l #TASKTBL,%A0
     move.l 4(%A0),%A0       |  Get TCB for task 1
     bclr #TCB_FLG_IO,TCB_STAT0(%A0) |  Clear the console wait bit
     move.l TCB_CON(%A0),%A0 |  Get console DCB for task 1
-    bsr RX_CHAR
+    bsr SLTTYRX_CHAR
     move.l (%SP)+,%A0
     rte
 |
@@ -157,7 +195,7 @@ TTY1HANDLE:            |  66-TTY1 handler
     move.l 8(%A0),%A0       |  Get TCB for task 2
     bclr #TCB_FLG_IO,TCB_STAT0(%A0) |  Clear the console wait bit
     move.l TCB_CON(%A0),%A0 |  Get console DCB for task 2
-    bsr RX_CHAR
+    bsr SLTTYRX_CHAR
     move.l (%SP)+,%A0
     rte
 |
@@ -168,9 +206,10 @@ TTY2HANDLE:            |  67-TTY2 handler
     move.l 12(%A0),%A0       |  Get TCB for task 3
     bclr #TCB_FLG_IO,TCB_STAT0(%A0) |  Clear the console wait bit
     move.l TCB_CON(%A0),%A0 |  Get console DCB for task 3
-    bsr RX_CHAR
+    bsr SLTTYRX_CHAR
     move.l (%SP)+,%A0
     rte
+|
 |==============================================================================
 |  Operating system data.  This includes data for exception handlers and
 |  hardware abstraction layer.
@@ -254,23 +293,26 @@ INIT:
     SET_VECTOR  #4,#ILLINSTHANDLE
     SET_VECTOR  #8,#PRIVHANDLE
     SET_VECTOR #32,#TRAP0HANDLE
+|
+|  Initialize clock
+|
     SET_VECTOR #64,#CLOCKHANDLE
-    SET_VECTOR #65,#TTY0HANDLE
-    SET_VECTOR #66,#TTY1HANDLE
-    SET_VECTOR #67,#TTY2HANDLE
-|
-|  Start the clock
-|
     move.b #1,CLKRATE  |  Rate is 10 times a second
     move.b #1,CLKSTAT  |  Enable the clock (0 - disable, 1 - enable)
 |
-|  Enable TTY interrupts
+|  Initialize single line TTYs
 |
-    move.b #0x14,TTY0BASE
-    move.b #0x14,TTY1BASE
-    move.b #0x14,TTY2BASE
+    SET_VECTOR #65,#TTY0HANDLE
+    move.l #TTY0DEV,%A0
+    bsr SLTTYINIT
+    SET_VECTOR #66,#TTY1HANDLE
+    move.l #TTY1DEV,%A0
+    bsr SLTTYINIT
+    SET_VECTOR #67,#TTY2HANDLE
+    move.l #TTY2DEV,%A0
+    bsr SLTTYINIT
 |
-|  Run the user program
+|  Start multitasking...
 |
     move.w #1,CURRTASK
     subq.l #6,%SP      |  Move stack pointer down to setup for a RTE
