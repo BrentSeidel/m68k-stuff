@@ -28,27 +28,27 @@
 |  compared with zero using a TST.L instruction.
 |
 .macro TCB entry,stack,console
-    .hword 0            | PSW (0)
-    .long \entry        | PC  (2)
-    .long 0             | D0 (use MOVEM.L to save registers here) (6)
-    .long 0             | D1 (10)
-    .long 0             | D2 (14)
-    .long 0             | D3 (18)
-    .long 0             | D4 (22)
-    .long 0             | D5 (26)
-    .long 0             | D6 (30)
-    .long 0             | D7 (34)
-    .long 0             | A0 (38)
-    .long 0             | A1 (42)
-    .long 0             | A2 (46)
-    .long 0             | A3 (50)
-    .long 0             | A4 (54)
-    .long 0             | A5 (58)
-    .long 0             | A6 (62)
-    .long \stack        | SP (needs to be saved separately) (66)
-    .long 0             | Task status (70)
-    .long 0             | Sleep timer (74)
-    .long \console      | Console device (78)
+    .dc.w 0             | PSW (0)
+    .dc.l \entry        | PC  (2)
+    .dc.l 0             | D0 (use MOVEM.L to save registers here) (6)
+    .dc.l 0             | D1 (10)
+    .dc.l 0             | D2 (14)
+    .dc.l 0             | D3 (18)
+    .dc.l 0             | D4 (22)
+    .dc.l 0             | D5 (26)
+    .dc.l 0             | D6 (30)
+    .dc.l 0             | D7 (34)
+    .dc.l 0             | A0 (38)
+    .dc.l 0             | A1 (42)
+    .dc.l 0             | A2 (46)
+    .dc.l 0             | A3 (50)
+    .dc.l 0             | A4 (54)
+    .dc.l 0             | A5 (58)
+    .dc.l 0             | A6 (62)
+    .dc.l \stack        | SP (needs to be saved separately) (66)
+    .dc.l 0             | Task status (70)
+    .dc.l 0             | Sleep timer (74)
+    .dc.l \console      | Console device (78)
 .endm
 |
 |  Define offsets into TCB
@@ -104,16 +104,16 @@
 |     0/1 - Buffer empty
 |
 .macro DCB base,unit,owner
-    .long \owner        |  Owning TCB (0)
-    .long \base         |  Data port (4)
-    .byte 2             |  Flag word 0 (4)  Buffer empty flag is set
-    .byte 0             |  Flag word 1 (5)
-    .byte 0             |  Flag word 2 (6)
-    .byte 0             |  Flag word 3 (7)
-    .hword \unit        |  Unit number (8)
-    .hword 1            |  Driver index (used to select driver) (10)
-    .byte 0             |  Buffer fill pointer (12)
-    .byte 0             |  Buffer empty pointer (13)
+    .dc.l \owner        |  Owning TCB (0)
+    .dc.l \base         |  Data port (4)
+    .dc.b 2             |  Flag word 0 (4)  Buffer empty flag is set
+    .dc.b 0             |  Flag word 1 (5)
+    .dc.b 0             |  Flag word 2 (6)
+    .dc.b 0             |  Flag word 3 (7)
+    .dc.w \unit         |  Unit number (8)
+    .dc.w 1             |  Driver index (used to select driver) (10)
+    .dc.b 0             |  Buffer fill pointer (12)
+    .dc.b 0             |  Buffer empty pointer (13)
     .space 0x100,0      |  Data buffer (14)
 .endm
 |
@@ -139,8 +139,8 @@
 |  Set an exception vector.  Registers %D0 and %A0 are used.
 |
 .macro SET_VECTOR num,handler
-    move.l \num,%D0      |  TTY0 interrupt
-    move.l \handler,%A0
+    move.l \num,%D0         |  Interrupt number
+    move.l \handler,%A0     |  Handler address
     bsr SETVEC
 .endm
 .list

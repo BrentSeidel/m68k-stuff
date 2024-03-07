@@ -20,8 +20,8 @@
 |
 .macro STRING label,size
     .align 2
-\label: .hword \size
-    .hword 0
+\label: .dc.w \size
+    .dc.w 0
     .space \size,0
 .endm
 |
@@ -31,8 +31,8 @@
 |
 .macro TEXT label,string
     .align 2
-\label: .hword (0f) - \label - 4
-    .hword (0f) - \label - 4
+\label: .dc.w (0f) - \label - 4
+    .dc.w (0f) - \label - 4
     .ascii "\string"
 0:
 .endm
