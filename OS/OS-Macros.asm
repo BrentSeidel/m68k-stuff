@@ -103,7 +103,7 @@
 |     0/0 - Buffer full
 |     0/1 - Buffer empty
 |
-.macro DCB base,unit,owner
+.macro DCB base,unit,driver,owner
     .dc.l \owner        |  Owning TCB (0)
     .dc.l \base         |  Data port (4)
     .dc.b 2             |  Flag word 0 (4)  Buffer empty flag is set
@@ -111,7 +111,7 @@
     .dc.b 0             |  Flag word 2 (6)
     .dc.b 0             |  Flag word 3 (7)
     .dc.w \unit         |  Unit number (8)
-    .dc.w 1             |  Driver index (used to select driver) (10)
+    .dc.w \driver       |  Driver index (used to select driver) (10)
     .dc.b 0             |  Buffer fill pointer (12)
     .dc.b 0             |  Buffer empty pointer (13)
     .space 0x100,0      |  Data buffer (14)
@@ -138,7 +138,8 @@
 |
 |  Defined driver numbers
 |
-   .equ DRV_SLTTY, 1
+   .equ DRV_SLTTY, 1        |  Single channel TTY interface
+   .equ DRV_MXTTY, 2        |  8 Channel TTY multiplexter
 |
 |  Set an exception vector.  Registers %D0 and %A0 are used.
 |

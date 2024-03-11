@@ -1,4 +1,4 @@
-\documentclass[10pt]{article}
+\documentclass[10pt]{book}
 %
 \usepackage{url}
 %
@@ -37,8 +37,8 @@ This document is \copyright 2024 Brent Seidel.  All rights reserved.
 \end{center}
 \tableofcontents
 
-%--------------------------------------------------------------------------------------------------
-\section{Overview}
+%========================================================
+\chapter{Overview}
 
 This is a collection of notes on a simple multi-tasking operating system for the 68000 CPU, temporarily names os68k.  The main goals are:
 \begin{enumerate}
@@ -55,6 +55,7 @@ Simulated devices provided by Sim-CPU that are currently used are the clock to p
 
 The operating system also includes a library with utility routines that can be used by the user programs.
 
+%--------------------------------------------------------------------------------------------------
 \section{Kernel}
 The kernel is composed of several sections.  The first two are at locations that are fixed by the simulated CPU and hardware:
 \begin{enumerate}
@@ -95,8 +96,9 @@ Currently, all system calls are handled by \verb|TRAP #0|.  The system call numb
   \item[64 SYS\_SHUTDOWN] - Shuts the system down
 \end{description}
 
+%--------------------------------------------------------------------------------------------------
 \section{Library}
-The library starts with a table of addresses of the various library routines.  This allows the user programs to find the desired routine by looking in a fixed address.  The code for a library call looks something like (Other registers besides \%A0 can be used, but \%A7 is the stack pointer and \%A6 is often used as a frame pointer.  The macros use \%A0):
+The library starts with a table of addresses of the various library routines.  This allows the user programs to find the desired routine by looking in a fixed address.  The code for a library call looks something like (Other registers besides \verb|%A0| can be used, but \verb|%A7| is the stack pointer and \verb|%A6| is often used as a frame pointer.  The macros use \verb|%A0|):
 \begin{lstlisting}
 ...  Put stuff on the stack
     move.l #LIBTBL,%A0
@@ -105,11 +107,126 @@ The library starts with a table of addresses of the various library routines.  T
 ...  Cleanup the stack
 \end{lstlisting}
 
-
 Since the library routines can be preempted, the library must contain only reentrant code.
 
+%--------------------------------------------------------------------------------------------------
 \section{User Space}
 Each task is allocated 1 megabyte of space starting on a megabyte boundary.  The initial PC is the start of the space and the initial SP is the end of the space.  The user program can use this space as it sees fit.
+
+\chapter{Kernel}
+This chapter describes the operating system kernel in more detail.
+%--------------------------------------------------------------------------------------------------
+\section{OS Macros and Definitions}
+A number of macros and data structures are defined in order to help keep the kernel code consistent and easier to understand.
+
+\subsection{Definitions}
+The data structures are defined using macros to help avoid repeating code and so that changes need only to be made in the macro definition.  In addition to the macro defining the data structure, symbols are defined for various offsets and data within the structure.
+
+The core of the multi-tasking is the task table.  It is basically an array of longword addresses to task control blocks (TCBs).  The table is located by global symbol \verb|TASKTBL|.  The task number of the currently executing task is stored in a word located at global symbol \verb|CURRTASK|.  It is initialized to 1.  The maximum number of tasks defined is another global symbol \verb|MAXTASK|, which is used to identify the end of the task table.
+\subsubsection{Task Control Block (TCB)}
+Each task has a task control block (TCB) with the following structure:
+\begin{lstlisting}
+.macro TCB entry,stack,console
+    .dc.w 0             | PSW (0)
+    .dc.l \entry        | PC  (2)
+    .dc.l 0             | D0  (6)
+    .dc.l 0             | D1 (10)
+    .dc.l 0             | D2 (14)
+    .dc.l 0             | D3 (18)
+    .dc.l 0             | D4 (22)
+    .dc.l 0             | D5 (26)
+    .dc.l 0             | D6 (30)
+    .dc.l 0             | D7 (34)
+    .dc.l 0             | A0 (38)
+    .dc.l 0             | A1 (42)
+    .dc.l 0             | A2 (46)
+    .dc.l 0             | A3 (50)
+    .dc.l 0             | A4 (54)
+    .dc.l 0             | A5 (58)
+    .dc.l 0             | A6 (62)
+    .dc.l \stack        | SP (66)
+    .dc.l 0             | Task status (70)
+    .dc.l 0             | Sleep timer (74)
+    .dc.l \console      | Console device (78)
+.endm
+\end{lstlisting}
+
+The offsets are defined as follows:
+\begin{lstlisting}
+    .equ TCB_PSW,    0
+    .equ TCB_PC,     2
+    .equ TCB_D0,     6
+    .equ TCB_D1,    10
+    .equ TCB_D2,    14
+    .equ TCB_D3,    18
+    .equ TCB_D4,    22
+    .equ TCB_D5,    26
+    .equ TCB_D6,    30
+    .equ TCB_D7,    34
+    .equ TCB_A0,    38
+    .equ TCB_A1,    42
+    .equ TCB_A2,    46
+    .equ TCB_A3,    50
+    .equ TCB_A4,    54
+    .equ TCB_A5,    58
+    .equ TCB_A6,    62
+    .equ TCB_SP,    66
+    .equ TCB_STAT0, 70
+    .equ TCB_STAT1, 71
+    .equ TCB_STAT2, 72
+    .equ TCB_STAT3, 73
+    .equ TCB_SLEEP, 74
+    .equ TCB_CON,   78
+\end{lstlisting}
+
+The current TCB status flags are defined for \verb|TCB_STAT0|.  The rest of the bits are unused.  The only flags defined now are for types of waiting.  This allows the scheduler to do a simple test for zero on the \verb|TCB_STAT| longword.  If flags ever need to be defined for non-wait purposes, the 32 bit status word may be split into two 16 bit words, with one word describing waits and the other describing non-wait status.  The currently defined flags are:
+\begin{lstlisting}
+   .equ TCB_FLG_IO,    0
+   .equ TCB_FLG_SLEEP, 1
+   .equ TCB_FLG_EXIT,  2
+\end{lstlisting}
+\verb|TCB_FLG_EXIT| is used to indicated that a task has terminated and should no longer be scheduled.  Since a shared command line interpreter is available, this flag may get depricated.  At some point, \verb|TCB_FLG_IO| may be split as more types of I/O get defined.
+
+\subsection{Macros}
+
+The \verb|GET_TCB| macro is defined as follows, and is used whenever a pointer to the current task's TCB is needed:
+\begin{lstlisting}
+.macro GET_TCB reg
+    move.l #0,\reg            |  Ensure that high bits are cleared
+    move.w CURRTASK,\reg      |  Get current task number
+    add.l \reg,\reg
+    add.l \reg,\reg           |  Multiply by 4
+    move.l TASKTBL(\reg),\reg |  Index into TCB table
+.endm
+\end{lstlisting}
+
+%--------------------------------------------------------------------------------------------------
+\section{Scheduler}
+Scheduling tasks consists of three basic functions.  The first is saving the context of the current task, then determine which task to run next, and finally restoring context for the new task.
+
+The context is saved by the following routine.  It saves register \verb|%A6| and uses it as a pointer to the current task's TCB.  Some values are read off the stack and written into the TCB.  Most of the registers are saved using a \verb|movem.l| instruction
+\begin{lstlisting}
+CTXSAVE:
+    .global CTXSAVE
+    MOVE.L %A6,-(%SP)    |  A6 is used to get a pointer to the task data area
+    |
+    |  At this point, the stack is:
+    |   0(SP) -> A6
+    |   4(SP) -> PSW
+    |   6(SP) -> PC for return
+    |
+    GET_TCB %A6
+    MOVE.W 8(%SP),(%A6)          |  Save PSW
+    MOVE.L 10(%SP),TCB_PC(%A6)   |  Save PC
+    MOVEM.L %D0-%D7/%A0-%A5,TCB_D0(%A6) |  Most registers are now saved
+    MOVE.L %USP,%A0
+    MOVE.L (%SP)+,TCB_A6(%A6)    |  Save A6
+    MOVE.L %A0,TCB_SP(%A6)       |  Save USP
+    move.l TCB_A0(%A6),%A0       |  Restore A0
+    move.l TCB_A6(%A6),%A6       |  Restore A6
+    RTS
+\end{lstlisting}
+
 
 \end{document}
 

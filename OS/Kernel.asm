@@ -19,21 +19,34 @@
 |    .endr               |  vector handler.  These may be updated later.
 |==============================================================================
 |  Addresses for hardware I/O ports
+|  Since there is actually no data defined for this section, it is not
+|  allocated.
 |
-    .section HW_PORTS,#write,#alloc
-CLKSTAT:               |  Clock status and control
+    .section HW_PORTS,#write
+CLKSTAT:                |  Clock status and control
     .dc.b 0
-CLKRATE:               |  Clock interval
+CLKRATE:                |  Clock interval
     .dc.b 0
 TTY0BASE:
-    .dc.b 0            |  Console status (LSB indicates data ready to read)
-    .dc.b 0            |  Console data
+    .dc.b 0             |  Console status (LSB indicates data ready to read)
+    .dc.b 0             |  Console data
 TTY1BASE:
-    .dc.b 0            |  Console status (LSB indicates data ready to read)
-    .dc.b 0            |  Console data
+    .dc.b 0             |  Console status (LSB indicates data ready to read)
+    .dc.b 0             |  Console data
 TTY2BASE:
-    .dc.b 0            |  Console status (LSB indicates data ready to read)
-    .dc.b 0            |  Console data
+    .dc.b 0             |  Console status (LSB indicates data ready to read)
+    .dc.b 0             |  Console data
+MUX0BASE:
+    .dc.b 0             |  Ready register
+    .dc.b 0             |  Control/status
+    .dc.b 0             |  Channel 0 data
+    .dc.b 0             |  Channel 1 data
+    .dc.b 0             |  Channel 2 data
+    .dc.b 0             |  Channel 3 data
+    .dc.b 0             |  Channel 4 data
+    .dc.b 0             |  Channel 5 data
+    .dc.b 0             |  Channel 6 data
+    .dc.b 0             |  Channel 7 data
 |==============================================================================
 |  Hardware Abstraction Layer section
 |
@@ -211,6 +224,30 @@ TTY2HANDLE:            |  67-TTY2 handler
     rte
 |
 |==============================================================================
+|  Device specific operations for 8 channel TTY multiplexer interface interface
+|
+MXTTYPUTC:
+    move.l %D1,-(%SP)
+    clr.l %D1
+    move.w DCB_UNIT(%A1),%D1
+    move.l DCB_PORT(%A1),%A1
+    add.l %D1,%A1
+    move.b %D0,2(%A1)
+    move.l (%SP)+,%A1
+    move.l (%SP)+,%D1
+    rts
+MXTTYPUTS:
+    rts
+MXTTYGETC:
+    rts
+MXTTYRX_CHAR:
+    rts
+MXTTYINIT:
+    rts
+MUX0HANDLE:
+    rte
+|
+|==============================================================================
 |  Operating system data.  This includes data for exception handlers and
 |  hardware abstraction layer.
 |
@@ -264,18 +301,34 @@ TCB3: TCB CLI_ENTRY,0x400000,TTY2DEV
 |  data.
 |
 TTYCNT:
-    .dc.w 3             | Number of TTY devices available
+    .dc.w 11            | Number of TTY devices available
 TTYTBL:
     .dc.l TTY0DEV
     .dc.l TTY1DEV
     .dc.l TTY2DEV
+    .dc.l MUX0DEV
+    .dc.l MUX1DEV
+    .dc.l MUX2DEV
+    .dc.l MUX3DEV
+    .dc.l MUX4DEV
+    .dc.l MUX5DEV
+    .dc.l MUX6DEV
+    .dc.l MUX7DEV
 |
 |  Data for TTY devices.  These consists of device port addresses, a
 |   driver index, a fill pointer, an empty pointer and a 256 byte buffer.
 |
-TTY0DEV: DCB TTY0BASE,0,TCB1
-TTY1DEV: DCB TTY1BASE,1,TCB2
-TTY2DEV: DCB TTY2BASE,2,TCB3
+TTY0DEV: DCB TTY0BASE,0,DRV_SLTTY,TCB1
+TTY1DEV: DCB TTY1BASE,1,DRV_SLTTY,TCB2
+TTY2DEV: DCB TTY2BASE,2,DRV_SLTTY,TCB3
+MUX0DEV: DCB MUX0BASE,0,DRV_MXTTY,0
+MUX1DEV: DCB MUX0BASE,0,DRV_MXTTY,0
+MUX2DEV: DCB MUX0BASE,0,DRV_MXTTY,0
+MUX3DEV: DCB MUX0BASE,0,DRV_MXTTY,0
+MUX4DEV: DCB MUX0BASE,0,DRV_MXTTY,0
+MUX5DEV: DCB MUX0BASE,0,DRV_MXTTY,0
+MUX6DEV: DCB MUX0BASE,0,DRV_MXTTY,0
+MUX7DEV: DCB MUX0BASE,0,DRV_MXTTY,0
 |==============================================================================
 |  Operating system, such as it is.
 |
