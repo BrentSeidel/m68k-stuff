@@ -23,6 +23,7 @@
     TEXT CMD_SHUTDOWN,"SHUTDOWN"
     TEXT CMD_STATUS,"STATUS"
     TEXT CMD_SLEEP,"SLEEP"
+    TEXT CMD_SEND,"SEND"
     TEXT BYE,"System shutting down - Good-bye.\r\n"
     TEXT STAT0,"Task status:\r\n"
     TEXT STAT_READY,"  Ready\r\n"
@@ -57,7 +58,7 @@ CLI_ENTRY:
     .equ VERB,INSTR-0x108   |  Space for 0x100 byte string
     .equ STR2,VERB-0x108    |  Space for 0x100 byte string
     .equ FRAME_END,STR2     |  Stack frame size
-    LINK %A6,#FRAME_END
+    link %A6,#FRAME_END
 |
 |  Initialize stack variables
 |
@@ -102,6 +103,8 @@ CMD_LOOP:
     beq STATUS_COMMAND
     STR_EQ %A2,#CMD_SLEEP
     beq SLEEP_COMMAND
+    STR_EQ %A2,#CMD_SEND
+    beq SEND_COMMAND
 |
 |  Command not found
 |
@@ -207,4 +210,29 @@ SLEEP_COMMAND:
 1:
     PRINT #ERR_NOSLEEP
 0:
+    bra CMD_LOOP
+|
+|  Send a message to all terminal interfaces.  Used for test purposes.
+|
+SEND_COMMAND:
+    FINDCHAR %A1,#SPACE,%D0
+    cmp.l #0x10000,%D0
+    beq 1f
+    STR_LEN %A1,%D1
+    STR_SUBSTR %A1,%A3,%D0,%D1
+    STR_TRIM LS,%A3
+    move.l #TTYTBL,%A2
+    move.w TTYCNT,%D0
+    subq.w #1,%D0
+    move.l %A3,%A0
+0:
+    move.l (%A2)+,%A1
+    move.l #NEWLINE,%A0
+    bsr WRITESTR
+    move.l %A3,%A0
+    bsr WRITESTR
+    move.l #NEWLINE,%A0
+    bsr WRITESTR
+    dbf %D0,0b
+1:
     bra CMD_LOOP

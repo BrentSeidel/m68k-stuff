@@ -63,6 +63,22 @@ PUTSTR:
     MOVE.L TCB_CON(%A1),%A1 |  Pointer to device block
     cmp.w #DRV_SLTTY,DCB_DRIVER(%A1)
     beq SLTTYPUTS
+    cmp.w #DRV_MXTTY,DCB_DRIVER(%A1)
+    beq MXTTYPUTS
+    stop #0                 |  Driver not found
+|
+|  Writes a string to a TTY.
+|  Input: Address of string in A0.
+|         Address of DCB for TTY in %A1
+|  Output: A0 unchanged.
+|
+WRITESTR:
+    .global WRITESTR
+    MOVEM.L %D0/%A0-%A1,-(%SP)
+    cmp.w #DRV_SLTTY,DCB_DRIVER(%A1)
+    beq SLTTYPUTS
+    cmp.w #DRV_MXTTY,DCB_DRIVER(%A1)
+    beq MXTTYPUTS
     stop #0                 |  Driver not found
 |
 |  Put a single character to the console.
@@ -76,6 +92,8 @@ PUTCHAR:
     MOVE.L TCB_CON(%A1),%A1 |  Pointer to device block
     cmp.w #DRV_SLTTY,DCB_DRIVER(%A1)
     beq SLTTYPUTC
+    cmp.w #DRV_MXTTY,DCB_DRIVER(%A1)
+    beq MXTTYPUTC
     stop #0                 |  Driver not found
 |
 |  Get a single character from the console.  Checks the DCB buffer to
@@ -89,6 +107,8 @@ GETCHAR:
     movem.l %D1-%D2/%A1,-(%SP)
     cmp.w #DRV_SLTTY,DCB_DRIVER(%A0)
     beq SLTTYGETC
+    cmp.w #DRV_MXTTY,DCB_DRIVER(%A1)
+    beq MXTTYGETC
     stop #0                 |  Driver not found
 |
 |==============================================================================
@@ -226,6 +246,9 @@ TTY2HANDLE:            |  67-TTY2 handler
 |==============================================================================
 |  Device specific operations for 8 channel TTY multiplexer interface interface
 |
+|
+|  Sends a string to the multiplexed TTY device pointed to by %A1
+|
 MXTTYPUTC:
     move.l %D1,-(%SP)
     clr.l %D1
@@ -236,7 +259,26 @@ MXTTYPUTC:
     move.l (%SP)+,%A1
     move.l (%SP)+,%D1
     rts
+|
+|  Sends a string to the multiplexed TTY device pointed to by %A1
+|
 MXTTYPUTS:
+    move.l %D1,-(%SP)
+    clr.l %D1
+    move.w DCB_UNIT(%A1),%D1
+    move.l DCB_PORT(%A1),%A1
+    add.l %D1,%A1
+    addq.l #2,%A0           |  Point to string size
+    clr.l %D0
+    move.w (%A0)+,%D0       |  Get length of string
+    beq 1f                  |  Do nothing if zero length
+    subq.w #1,%D0
+0:
+    move.b (%A0)+,2(%A1)
+    dbf %D0,0b
+1:
+    move.l (%SP)+,%D1
+    movem.l (%SP)+,%D0/%A0-%A1
     rts
 MXTTYGETC:
     rts
@@ -301,8 +343,10 @@ TCB3: TCB CLI_ENTRY,0x400000,TTY2DEV
 |  data.
 |
 TTYCNT:
+    .global TTYCNT
     .dc.w 11            | Number of TTY devices available
 TTYTBL:
+    .global TTYTBL
     .dc.l TTY0DEV
     .dc.l TTY1DEV
     .dc.l TTY2DEV
@@ -322,13 +366,13 @@ TTY0DEV: DCB TTY0BASE,0,DRV_SLTTY,TCB1
 TTY1DEV: DCB TTY1BASE,1,DRV_SLTTY,TCB2
 TTY2DEV: DCB TTY2BASE,2,DRV_SLTTY,TCB3
 MUX0DEV: DCB MUX0BASE,0,DRV_MXTTY,0
-MUX1DEV: DCB MUX0BASE,0,DRV_MXTTY,0
-MUX2DEV: DCB MUX0BASE,0,DRV_MXTTY,0
-MUX3DEV: DCB MUX0BASE,0,DRV_MXTTY,0
-MUX4DEV: DCB MUX0BASE,0,DRV_MXTTY,0
-MUX5DEV: DCB MUX0BASE,0,DRV_MXTTY,0
-MUX6DEV: DCB MUX0BASE,0,DRV_MXTTY,0
-MUX7DEV: DCB MUX0BASE,0,DRV_MXTTY,0
+MUX1DEV: DCB MUX0BASE,1,DRV_MXTTY,0
+MUX2DEV: DCB MUX0BASE,2,DRV_MXTTY,0
+MUX3DEV: DCB MUX0BASE,3,DRV_MXTTY,0
+MUX4DEV: DCB MUX0BASE,4,DRV_MXTTY,0
+MUX5DEV: DCB MUX0BASE,5,DRV_MXTTY,0
+MUX6DEV: DCB MUX0BASE,6,DRV_MXTTY,0
+MUX7DEV: DCB MUX0BASE,7,DRV_MXTTY,0
 |==============================================================================
 |  Operating system, such as it is.
 |

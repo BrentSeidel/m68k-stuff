@@ -1,4 +1,4 @@
-\documentclass[10pt]{book}
+\documentclass[10pt, openany]{book}
 %
 \usepackage{url}
 %
@@ -82,6 +82,8 @@ The clock has a settable rate for the periodic interrupts.  The rate is a byte s
 \subsubsection{Terminal Interfaces}
 Multiple terminal interfaces can be supported.  Right now, each interface has its own interrupt vector, but it should be possible to have a single vector where the service routine determines which interfaces are ready.
 
+A terminal multiplexer is in work, but not fully implemented or debugged yet.
+
 \subsection{Scheduling}
 Currently, a simple round-robin scheduler is used.
 
@@ -113,6 +115,7 @@ Since the library routines can be preempted, the library must contain only reent
 \section{User Space}
 Each task is allocated 1 megabyte of space starting on a megabyte boundary.  The initial PC is the start of the space and the initial SP is the end of the space.  The user program can use this space as it sees fit.
 
+%========================================================
 \chapter{Kernel}
 This chapter describes the operating system kernel in more detail.
 %--------------------------------------------------------------------------------------------------
@@ -123,8 +126,11 @@ A number of macros and data structures are defined in order to help keep the ker
 The data structures are defined using macros to help avoid repeating code and so that changes need only to be made in the macro definition.  In addition to the macro defining the data structure, symbols are defined for various offsets and data within the structure.
 
 The core of the multi-tasking is the task table.  It is basically an array of longword addresses to task control blocks (TCBs).  The table is located by global symbol \verb|TASKTBL|.  The task number of the currently executing task is stored in a word located at global symbol \verb|CURRTASK|.  It is initialized to 1.  The maximum number of tasks defined is another global symbol \verb|MAXTASK|, which is used to identify the end of the task table.
+
 \subsubsection{Task Control Block (TCB)}
-Each task has a task control block (TCB) with the following structure:
+Currently the TCB is fairly basic.  It will need to be expanded if FPU or MMU support is to be added.
+
+Each task has a TCB with the following structure:
 \begin{lstlisting}
 .macro TCB entry,stack,console
     .dc.w 0             | PSW (0)
@@ -202,13 +208,14 @@ The \verb|GET_TCB| macro is defined as follows, and is used whenever a pointer t
 
 %--------------------------------------------------------------------------------------------------
 \section{Scheduler}
-Scheduling tasks consists of three basic functions.  The first is saving the context of the current task, then determine which task to run next, and finally restoring context for the new task.
+Scheduling tasks consists of three basic functions.  The first is saving the context of the current task, then determine which task to run next, and finally restoring context for the new task.  Should the TCB be expanded for FPU and/or MMU support, the save and restore context routines will also need to be updated.
 
+\subsection{Saving Context}
 The context is saved by the following routine.  It saves register \verb|%A6| and uses it as a pointer to the current task's TCB.  Some values are read off the stack and written into the TCB.  Most of the registers are saved using a \verb|movem.l| instruction
 \begin{lstlisting}
 CTXSAVE:
     .global CTXSAVE
-    MOVE.L %A6,-(%SP)    |  A6 is used to get a pointer to the task data area
+    move.l %A6,-(%SP)    |  A6 is used to get a pointer to the task data area
     |
     |  At this point, the stack is:
     |   0(SP) -> A6
@@ -216,17 +223,78 @@ CTXSAVE:
     |   6(SP) -> PC for return
     |
     GET_TCB %A6
-    MOVE.W 8(%SP),(%A6)          |  Save PSW
-    MOVE.L 10(%SP),TCB_PC(%A6)   |  Save PC
-    MOVEM.L %D0-%D7/%A0-%A5,TCB_D0(%A6) |  Most registers are now saved
-    MOVE.L %USP,%A0
-    MOVE.L (%SP)+,TCB_A6(%A6)    |  Save A6
-    MOVE.L %A0,TCB_SP(%A6)       |  Save USP
+    move.w 8(%SP),(%A6)          |  Save PSW
+    move.l 10(%SP),TCB_PC(%A6)   |  Save PC
+    movem.l %D0-%D7/%A0-%A5,TCB_D0(%A6) |  Most registers are now saved
+    move.l %USP,%A0
+    move.l (%SP)+,TCB_A6(%A6)    |  Save A6
+    move.l %A0,TCB_SP(%A6)       |  Save USP
     move.l TCB_A0(%A6),%A0       |  Restore A0
     move.l TCB_A6(%A6),%A6       |  Restore A6
-    RTS
+    rts
 \end{lstlisting}
 
+\subsection{Schedule}
+The scheduler determines which task is to be run next.  It first checks if the current task is zero.  If so, the current task is set to one.  Then the task list is searched, starting with the current task and wrapping around at the end, to find the next task that is ready to run.  If there is no task that is ready to run, task zero is selected.  Effectively, task zero runs at a lower priority than the other tasks.  It only runs if all other tasks are waiting.  After the scheduler runs, it falls through to context restoration and the selected task is run.
+\begin{lstlisting}
+SCHEDULE:
+    .global SCHEDULE
+    clr.l %D0
+    clr.l %D1
+    move.w CURRTASK,%D0     |  Current task number
+    tst.w %D0               |  Check if the current task is the null task
+    bne 0f
+    moveq.l #1,%D0          |  If current task is 0, set it to 1
+    move.w %D0,CURRTASK     |  Update memory as it is used later
+0:
+    move.w #MAXTASK,%D1
+    subq.w #1,%D1           |  Max task number
+    cmp.w %D0,%D1           |  Check if current task is max task
+    bne 1f                  |  If not, start loop to find next task
+    moveq.l #1,%D0          |  Otherwise, wrap to start of list
+    bra 4f
+1:                          |  Loop to scan through task table
+    addq.l #1,%D0
+4:
+    move.l %D0,%A0
+    add.l %A0,%A0
+    add.l %A0,%A0           |  Multiply by four to use as index
+    move.l TASKTBL(%A0),%A0 |  Address of task block
+    beq 2f                  |  If no task block, end of table is reached.
+                            |  Just use task 0.
+    tst.l TCB_STAT0(%A0)
+    beq 3f                  |  Found a task to select
+    cmp.w CURRTASK,%D0
+    beq 2f                  |  No candidate was found
+    cmp.w %D0,%D1           |  Check for end of list
+    bne 1b                  |  Loop, if not
+    moveq.l #1,%D0          |  Go back to check task 1, if so
+    bra 4b
+2:
+    clr.l %D0               |  If no task found, use task 0
+3:
+    move.w %D0,CURRTASK     |  Set the new current task and ...
+\end{lstlisting}
+\subsection{Restore Context}
+Once a task is scheduled, the last step before running the task is restoring its context.  This loads the registers from the context save area in the task's TCB and sets up the stack for a \verb|rte| instruction.
+\begin{lstlisting}
+CTXREST:
+    GET_TCB %A6
+    move.l TCB_SP(%A6),%A0    |  Get the user stack pointer
+    move.l %A0,%USP           |  Set user stack pointer
+    move.w (%A6),(%SP)        |  Put PSW on stack
+    move.l TCB_PC(%A6),2(%SP) |  Put PC on stack
+    movem.l TCB_D0(%A6),%D0-%D7/%A0-%A6
+    rte                       |  Carry on
+\end{lstlisting}
+
+%========================================================
+\chapter{Library}
+The library contains a number of routines that can be used by tasks.  Some of these routines may also be used by the operating system.
+
+%========================================================
+\chapter{Command Line Interpreter (CLI)}
+The Command Line Interpreter is shared code that can by used by any task.
 
 \end{document}
 
