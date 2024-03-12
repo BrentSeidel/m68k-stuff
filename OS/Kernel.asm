@@ -166,12 +166,49 @@ SLTTYGETC:
     movem.l (%SP)+,%D1-%D2/%A1
     rts
 |
-|  Process receiving a character.  Called from interrupt service routine
-|  with A0 pointing to the DCB.  It loops, reading characters, until no
+|  Perform any device and DCB initializations needed.  Address of DCB
+|  passed in in %A0.
+|
+SLTTYINIT:
+    move.b #0,DCB_FILL(%A0)     |  Clear buffer pointers
+    move.b #0,DCB_EMPTY(%A0)
+    move.b #2,DCB_FLAG0(%A0)    |  Set flag to indicate empty buffer
+    move.l DCB_PORT(%A0),%A0
+    move.b #0x14,(%A0)       |  Reset interface and enable interrupts
+    rts
+|
+|------------------------------------------------------------------------------
+|  Handlers for single line TTY interrupts.  Each device has its own
+|  interrupt.
+|
+TTY0HANDLE:            |  65-TTY0 handler
+    movem.l %D0-%D1/%A0-%A2,-(%SP)
+    move.l #TTY0DEV,%A0     |  DCB for TTY0
+    bra SLTTYRX_CHAR
+|
+|------------------------------------------------------------------------------
+TTY1HANDLE:            |  66-TTY1 handler
+    movem.l %D0-%D1/%A0-%A2,-(%SP)
+    move.l #TTY1DEV,%A0
+    bra SLTTYRX_CHAR
+|
+|------------------------------------------------------------------------------
+TTY2HANDLE:            |  67-TTY2 handler
+    movem.l %D0-%D1/%A0-%A2,-(%SP)
+    move.l #TTY2DEV,%A0
+    bra SLTTYRX_CHAR
+|
+|------------------------------------------------------------------------------
+|  Common end to single line TTY interrupt service routines.  Entered with
+|  %A0 pointing to the DCB.  It loops, reading characters, until no
 |  more are ready.
 |
 SLTTYRX_CHAR:
-    movem.l %D0-%D1/%A1-%A2,-(%SP)
+    move.l DCB_OWN(%A0),%D0 |  Get TCB for TTY
+    beq 2f                  |  Skip status bit if no TCB
+    move.l %D0,%A1
+    bclr #TCB_FLG_IO,TCB_STAT0(%A1) |  Clear the console wait bit
+2:
     clr.l %D0
     clr.l %d1
     move.b DCB_FILL(%A0),%D0    |  Fill pointer
@@ -193,54 +230,7 @@ SLTTYRX_CHAR:
     move.b %D1,DCB_EMPTY(%A0)   |  Write it back to DCB
     bra 1b
 0:
-    movem.l (%SP)+,%D0-%D1/%A1-%A2
-    rts
-|
-|  Perform any device and DCB initializations needed.  Address of DCB
-|  passed in in %A0.
-|
-SLTTYINIT:
-    move.b #0,DCB_FILL(%A0)     |  Clear buffer pointers
-    move.b #0,DCB_EMPTY(%A0)
-    move.b #2,DCB_FLAG0(%A0)    |  Set flag to indicate empty buffer
-    move.l DCB_PORT(%A0),%A0
-    move.b #0x14,(%A0)       |  Reset interface and enable interrupts
-    rts
-|
-|------------------------------------------------------------------------------
-|  Handlers for single line TTY interrupts.  Each device has its own
-|  interrupt.
-|
-TTY0HANDLE:            |  65-TTY0 handler
-    move.l %A0,-(%SP)
-    move.l #TASKTBL,%A0
-    move.l 4(%A0),%A0       |  Get TCB for task 1
-    bclr #TCB_FLG_IO,TCB_STAT0(%A0) |  Clear the console wait bit
-    move.l TCB_CON(%A0),%A0 |  Get console DCB for task 1
-    bsr SLTTYRX_CHAR
-    move.l (%SP)+,%A0
-    rte
-|
-|------------------------------------------------------------------------------
-TTY1HANDLE:            |  66-TTY1 handler
-    move.l %A0,-(%SP)
-    move.l #TASKTBL,%A0
-    move.l 8(%A0),%A0       |  Get TCB for task 2
-    bclr #TCB_FLG_IO,TCB_STAT0(%A0) |  Clear the console wait bit
-    move.l TCB_CON(%A0),%A0 |  Get console DCB for task 2
-    bsr SLTTYRX_CHAR
-    move.l (%SP)+,%A0
-    rte
-|
-|------------------------------------------------------------------------------
-TTY2HANDLE:            |  67-TTY2 handler
-    move.l %A0,-(%SP)
-    move.l #TASKTBL,%A0
-    move.l 12(%A0),%A0       |  Get TCB for task 3
-    bclr #TCB_FLG_IO,TCB_STAT0(%A0) |  Clear the console wait bit
-    move.l TCB_CON(%A0),%A0 |  Get console DCB for task 3
-    bsr SLTTYRX_CHAR
-    move.l (%SP)+,%A0
+    movem.l (%SP)+,%D0-%D1/%A0-%A2
     rte
 |
 |==============================================================================

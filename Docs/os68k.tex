@@ -190,6 +190,7 @@ The current TCB status flags are defined for \verb|TCB_STAT0|.  The rest of the 
    .equ TCB_FLG_IO,    0
    .equ TCB_FLG_SLEEP, 1
    .equ TCB_FLG_EXIT,  2
+   .equ TCB_FLG_CTRLC, 3
 \end{lstlisting}
 \verb|TCB_FLG_EXIT| is used to indicated that a task has terminated and should no longer be scheduled.  Since a shared command line interpreter is available, this flag may get depricated.  At some point, \verb|TCB_FLG_IO| may be split as more types of I/O get defined.
 

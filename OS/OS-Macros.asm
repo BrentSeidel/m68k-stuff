@@ -83,6 +83,7 @@
    .equ TCB_FLG_IO,    0
    .equ TCB_FLG_SLEEP, 1
    .equ TCB_FLG_EXIT,  2
+   .equ TCB_FLG_CTRLC, 3
 |
 |  Get the TCB for the current task.  The address of the TCB is left in
 |  the specified address register.
