@@ -227,11 +227,14 @@ SLTTYRX_CHAR:
     bne 3f
     clr.b DCB_EMPTY(%A0)        |  Clear the DCB buffer
     clr.b DCB_FILL(%A0)
+    clr.l %D0
+    clr.l %D1
     bset #DCB_BUFF_EMPTY,DCB_FLAG0(%A0)  |  Set buffer empty flag
     bclr #DCB_BUFF_FULL,DCB_FLAG0(%A0)   |  Clear buffer full flag
     move.l DCB_OWN(%A0),%D2     |  Check if TCB attached to DCB
     beq 1b
     bset #TCB_FLG_CTRLC,TCB_STAT0(%A3)   |  If so, set CTRL-C flag
+    bra 1b
 3:
     move.b %D2,(%A1)            |  Write data to buffer
     addq.b #1,%D0               |  Increment fill pointer
