@@ -32,6 +32,7 @@
     TEXT STAT_TERMINATE,"  Task terminated\r\n"
     TEXT STAT_UNKNOWN,"  Unknown wait\r\n"
     TEXT STAT_CURR,"  Current\r\n"
+    TEXT STAT_CTRLC, "  Ctrl-C\r\n"
     TEXT TICKS," ticks\r\n"
 |
 |  Code section.
@@ -191,6 +192,11 @@ STAT_DECODE:
     PRINT #STAT_TERMINATE
     bra 0f
 3:
+    btst #TCB_FLG_CTRLC,TCB_STAT0(%A5)
+    beq 4f
+    PRINT #STAT_CTRLC
+    bra 0f
+4:
     PRINT #STAT_UNKNOWN
 0:
     rts

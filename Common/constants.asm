@@ -6,6 +6,7 @@
 |
 |  Constants for ASCII characters
 |
+    .equ ETX,    3      |  Control C
     .equ BELL,   7      |  Ring the bell
     .equ BS,     8      |  Back space
     .equ TAB,    9      |  Horizontal tab

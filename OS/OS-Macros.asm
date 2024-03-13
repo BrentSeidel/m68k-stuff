@@ -107,15 +107,15 @@
 .macro DCB base,unit,driver,owner
     .dc.l \owner        |  Owning TCB (0)
     .dc.l \base         |  Data port (4)
-    .dc.b 2             |  Flag word 0 (4)  Buffer empty flag is set
-    .dc.b 0             |  Flag word 1 (5)
-    .dc.b 0             |  Flag word 2 (6)
-    .dc.b 0             |  Flag word 3 (7)
-    .dc.w \unit         |  Unit number (8)
-    .dc.w \driver       |  Driver index (used to select driver) (10)
-    .dc.b 0             |  Buffer fill pointer (12)
-    .dc.b 0             |  Buffer empty pointer (13)
-    .space 0x100,0      |  Data buffer (14)
+    .dc.b 2             |  Flag word 0 (8)  Buffer empty flag is set
+    .dc.b 0             |  Flag word 1 (9)
+    .dc.b 0             |  Flag word 2 (10)
+    .dc.b 0             |  Flag word 3 (11)
+    .dc.w \unit         |  Unit number (12)
+    .dc.w \driver       |  Driver index (used to select driver) (14)
+    .dc.b 0             |  Buffer fill pointer (16)
+    .dc.b 0             |  Buffer empty pointer (17)
+    .space 0x100,0      |  Data buffer (18)
 .endm
 |
 |  Offsets into DCB

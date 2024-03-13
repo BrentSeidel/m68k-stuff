@@ -182,19 +182,19 @@ SLTTYINIT:
 |  interrupt.
 |
 TTY0HANDLE:            |  65-TTY0 handler
-    movem.l %D0-%D1/%A0-%A2,-(%SP)
+    movem.l %D0-%D2/%A0-%A3,-(%SP)
     move.l #TTY0DEV,%A0     |  DCB for TTY0
     bra SLTTYRX_CHAR
 |
 |------------------------------------------------------------------------------
 TTY1HANDLE:            |  66-TTY1 handler
-    movem.l %D0-%D1/%A0-%A2,-(%SP)
+    movem.l %D0-%D2/%A0-%A3,-(%SP)
     move.l #TTY1DEV,%A0
     bra SLTTYRX_CHAR
 |
 |------------------------------------------------------------------------------
 TTY2HANDLE:            |  67-TTY2 handler
-    movem.l %D0-%D1/%A0-%A2,-(%SP)
+    movem.l %D0-%D2/%A0-%A3,-(%SP)
     move.l #TTY2DEV,%A0
     bra SLTTYRX_CHAR
 |
@@ -206,20 +206,34 @@ TTY2HANDLE:            |  67-TTY2 handler
 SLTTYRX_CHAR:
     move.l DCB_OWN(%A0),%D0 |  Get TCB for TTY
     beq 2f                  |  Skip status bit if no TCB
-    move.l %D0,%A1
-    bclr #TCB_FLG_IO,TCB_STAT0(%A1) |  Clear the console wait bit
+    move.l %D0,%A3
+    bclr #TCB_FLG_IO,TCB_STAT0(%A3) |  Clear the console wait bit
 2:
     clr.l %D0
     clr.l %d1
     move.b DCB_FILL(%A0),%D0    |  Fill pointer
     move.b DCB_EMPTY(%A0),%D1   |  Empty pointer
-    lea DCB_BUFFER(%A0),%A1     |  Pointer to buffer
     move.l DCB_PORT(%A0),%A2    |  I/O port address
 1:
     btst #0,(%A2)               |  Check if character ready
     beq 0f
+    lea DCB_BUFFER(%A0),%A1     |  Pointer to buffer
     add.l %D0,%A1               |  Add offset to base address
-    move.b 1(%A2),(%A1)         |  Move data from port to buffer
+    move.b 1(%A2),%D2           |  Read data from port
+    |
+    |  Checks for special control character like CTRL-C can be added here.
+    |
+    cmp.b #ETX,%D2              |  Check for CTRL-C
+    bne 3f
+    clr.b DCB_EMPTY(%A0)        |  Clear the DCB buffer
+    clr.b DCB_FILL(%A0)
+    bset #DCB_BUFF_EMPTY,DCB_FLAG0(%A0)  |  Set buffer empty flag
+    bclr #DCB_BUFF_FULL,DCB_FLAG0(%A0)   |  Clear buffer full flag
+    move.l DCB_OWN(%A0),%D2     |  Check if TCB attached to DCB
+    beq 1b
+    bset #TCB_FLG_CTRLC,TCB_STAT0(%A3)   |  If so, set CTRL-C flag
+3:
+    move.b %D2,(%A1)            |  Write data to buffer
     addq.b #1,%D0               |  Increment fill pointer
     move.b %D0,DCB_FILL(%A0)    |  Write it back to DCB
     bclr #DCB_BUFF_EMPTY,DCB_FLAG0(%A0) |  Clear empty flag
@@ -230,7 +244,7 @@ SLTTYRX_CHAR:
     move.b %D1,DCB_EMPTY(%A0)   |  Write it back to DCB
     bra 1b
 0:
-    movem.l (%SP)+,%D0-%D1/%A0-%A2
+    movem.l (%SP)+,%D0-%D2/%A0-%A3
     rte
 |
 |==============================================================================
@@ -513,6 +527,11 @@ SCHEDULE:
     MOVE.L TASKTBL(%A0),%A0 |  Address of task block
     beq 2f                  |  If no task block, end of table is reached.
                             |  Just use task 0.
+    btst #TCB_FLG_CTRLC,TCB_STAT0(%A0)
+    beq 5f
+    clr.l TCB_STAT0(%A0)    |  Clear all status flags
+    move.l #CLI_ENTRY,TCB_PC(%A0)
+5:
     TST.L TCB_STAT0(%A0)
     BEQ 3f                  |  Found a task to select
     CMP.W CURRTASK,%D0
@@ -595,12 +614,12 @@ PRIVHANDLE:            |  8-Privilege violation handler
 CLOCKHANDLE:            |  64-Clock handler
     MOVE #0x2700,%SR
     ADDQ.L #1,CLKCOUNT
-1:                      | Adjust the sleep timers
+1:                      |  Scan through the task table
     MOVEM.L %D0-%D1/%A0-%A1,-(%SP)
     MOVE.L #MAXTASK,%D0
     SUBQ.L #1,%D0
     MOVE.L #TASKTBL,%A0
-2:
+2:                      | Adjust the sleep timers
     MOVE.L (%A0)+,%A1
     btst #TCB_FLG_SLEEP,TCB_STAT0(%A1)
     BEQ 3f              |  If sleep flag is not set
@@ -613,7 +632,7 @@ CLOCKHANDLE:            |  64-Clock handler
     BTST #13,(%SP)       |  Check if privilege bit is set
     BNE 0f               |  Only try context switching in
     BSR CTXSAVE          |  user mode
-    JMP SCHEDULE
+    bra SCHEDULE
 0:
     RTE
 |==============================================================================
