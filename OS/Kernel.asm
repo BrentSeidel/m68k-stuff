@@ -8,15 +8,7 @@
     .include "../Common/constants.asm"
     .include "../Common/Macros.asm"
     .include "OS-Macros.asm"
-|==============================================================================
-|  Exception Vectors
 |
-|    .section VSECT,#write,#alloc
-|    .long NULLVEC
-|    .long SUPSTK
-|    .rept 0x100-2       |  Can't use .fill with a relocatable symbol
-|    .long NULLVEC       |  Initialize all vectors to point to uninialized
-|    .endr               |  vector handler.  These may be updated later.
 |==============================================================================
 |  Addresses for hardware I/O ports
 |  Since there is actually no data defined for this section, it is not
@@ -47,26 +39,29 @@ MUX0BASE:
     .dc.b 0             |  Channel 5 data
     .dc.b 0             |  Channel 6 data
     .dc.b 0             |  Channel 7 data
+|
 |==============================================================================
 |  Hardware Abstraction Layer section
 |
     .section HW_SECT,#execinstr,#alloc
 |
+|------------------------------------------------------------------------------
 |  Prints a string to the console.
 |  Input: Address of string in A0.
 |  Output: A0 unchanged.
 |
 PUTSTR:
     .global PUTSTR
-    MOVEM.L %D0/%A0-%A1,-(%SP)
+    movem.l %D0/%A0-%A1,-(%SP)
     GET_TCB %A1
-    MOVE.L TCB_CON(%A1),%A1 |  Pointer to device block
+    move.l TCB_CON(%A1),%A1 |  Pointer to device block
     cmp.w #DRV_SLTTY,DCB_DRIVER(%A1)
     beq SLTTYPUTS
     cmp.w #DRV_MXTTY,DCB_DRIVER(%A1)
     beq MXTTYPUTS
     stop #0                 |  Driver not found
 |
+|------------------------------------------------------------------------------
 |  Writes a string to a TTY.
 |  Input: Address of string in A0.
 |         Address of DCB for TTY in %A1
@@ -74,28 +69,30 @@ PUTSTR:
 |
 WRITESTR:
     .global WRITESTR
-    MOVEM.L %D0/%A0-%A1,-(%SP)
+    movem.l %D0/%A0-%A1,-(%SP)
     cmp.w #DRV_SLTTY,DCB_DRIVER(%A1)
     beq SLTTYPUTS
     cmp.w #DRV_MXTTY,DCB_DRIVER(%A1)
     beq MXTTYPUTS
     stop #0                 |  Driver not found
 |
+|------------------------------------------------------------------------------
 |  Put a single character to the console.
 |  Input: Character in D0.B
 |  Output: None
 |
 PUTCHAR:
     .global PUTCHAR
-    MOVE.L %A1,-(%SP)
+    move.l %A1,-(%SP)
     GET_TCB %A1
-    MOVE.L TCB_CON(%A1),%A1 |  Pointer to device block
+    move.l TCB_CON(%A1),%A1 |  Pointer to device block
     cmp.w #DRV_SLTTY,DCB_DRIVER(%A1)
     beq SLTTYPUTC
     cmp.w #DRV_MXTTY,DCB_DRIVER(%A1)
     beq MXTTYPUTC
     stop #0                 |  Driver not found
 |
+|------------------------------------------------------------------------------
 |  Get a single character from the console.  Checks the DCB buffer to
 |  see if it is empty or not.  If not, returns the next character,
 |  otherwise returns 0x100.
@@ -123,6 +120,7 @@ SLTTYPUTC:
     move.l (%SP)+,%A1
     rts
 |
+|------------------------------------------------------------------------------
 |  Sends a string to the single line TTY device pointed to by %A1
 |
 SLTTYPUTS:
@@ -139,6 +137,7 @@ SLTTYPUTS:
     movem.l (%SP)+,%D0/%A0-%A1
     rts
 |
+|------------------------------------------------------------------------------
 |  Gets a character from the single line TTY device pointed to by %A0
 |
 SLTTYGETC:
@@ -253,7 +252,6 @@ SLTTYRX_CHAR:
 |==============================================================================
 |  Device specific operations for 8 channel TTY multiplexer interface interface
 |
-|
 |  Sends a string to the multiplexed TTY device pointed to by %A1
 |
 MXTTYPUTC:
@@ -274,7 +272,7 @@ MXTTYPUTS:
     clr.l %D1
     move.w DCB_UNIT(%A1),%D1
     move.l DCB_PORT(%A1),%A1
-    add.l %D1,%A1
+    add.l %D1,%A1           |  Get address of channel's port
     addq.l #2,%A0           |  Point to string size
     clr.l %D0
     move.w (%A0)+,%D0       |  Get length of string
@@ -287,13 +285,21 @@ MXTTYPUTS:
     move.l (%SP)+,%D1
     movem.l (%SP)+,%D0/%A0-%A1
     rts
+|
+|------------------------------------------------------------------------------
 MXTTYGETC:
     rts
-MXTTYRX_CHAR:
-    rts
+|
+|------------------------------------------------------------------------------
 MXTTYINIT:
     rts
+|
+|------------------------------------------------------------------------------
 MUX0HANDLE:
+    bra MXTTYRX_CHAR
+|
+|------------------------------------------------------------------------------
+MXTTYRX_CHAR:
     rte
 |
 |==============================================================================
@@ -357,7 +363,7 @@ TTYTBL:
     .dc.l TTY0DEV
     .dc.l TTY1DEV
     .dc.l TTY2DEV
-    .dc.l MUX0DEV
+    .dc.l MUX0DEV       |  All devices for a mux must be together in order
     .dc.l MUX1DEV
     .dc.l MUX2DEV
     .dc.l MUX3DEV
@@ -445,7 +451,7 @@ NULLTASK:
     .global NULLTASK
     MOVE.L #0x1000,%A0
 0:
-    TST (%A0)+
+    tst.w (%A0)+
     CMP.L #0x00FFFF00,%A0
     BEQ NULLTASK
     BRA 0b
@@ -573,7 +579,7 @@ NULLVEC:                |  All vectors initialized to this.
     JSR PUTSTR
     MOVE.L #NEWLINE,%A0
     JSR PUTSTR
-    JMP CLEANUP
+    bra CLEANUP
 |
 |------------------------------------------------------------------------------
 ODDADDRHANDLE:         |  3-Odd address error handler
@@ -585,7 +591,7 @@ ODDADDRHANDLE:         |  3-Odd address error handler
     JSR PUTSTR
     MOVE.L #NEWLINE,%A0
     JSR PUTSTR
-    JMP CLEANUP
+    bra CLEANUP
 |
 |------------------------------------------------------------------------------
 ILLINSTHANDLE:         |  4-Illegal instruction handler
@@ -597,7 +603,7 @@ ILLINSTHANDLE:         |  4-Illegal instruction handler
     JSR PUTSTR
     MOVE.L #NEWLINE,%A0
     JSR PUTSTR
-    JMP CLEANUP
+    bra CLEANUP
 |
 |------------------------------------------------------------------------------
 PRIVHANDLE:            |  8-Privilege violation handler
@@ -609,7 +615,7 @@ PRIVHANDLE:            |  8-Privilege violation handler
     JSR PUTSTR
     MOVE.L #NEWLINE,%A0
     JSR PUTSTR
-    JMP CLEANUP
+    bra CLEANUP
 |
 |  TRAP0-15 handlers go here 32-47 are in an external file.
 |
