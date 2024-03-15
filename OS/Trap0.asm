@@ -33,6 +33,10 @@
 |   16 - Sleep for the number of clock ticks in the argument
 |   64 - Shutdown
 |
+|  Note that registers %D0, %A0, and %A1 are saved and restored by the
+|  trap handler.  Context is also saved on trap entry, though it is not
+|  needed in all cases.
+|
 TRAP0HANDLE:
    .global TRAP0HANDLE
 ARG1 = 2
@@ -71,11 +75,22 @@ EXITP:                    |  Exit program
     jmp SCHEDULE
 |
 |------------------------------------------------------------------------------
-PUTS:                     |  Put a string to the console
+PUTS:                       |  Put a string to the console
    .global PUTS
-    move.l ARG1(%A1),%A0  |  Get string address
-    bsr PUTSTR
-    clr.w (%A1)           |  Set status to success
+    move.l ARG1(%A1),%A0    |  Get string address
+    GET_TCB %A1
+    move.l %A1,%D0          |  The move also tests for zero
+    bne 0f                  |  If TCB is not zero skip, otherwise
+    move.l TTYTBL(%A1),%A1  |  use first entry in DCB table
+    bra 1f
+0:
+    move.l TCB_CON(%A1),%A1 |  Get console for current task
+    move.l %A1,%D0          |  See if console is defined
+    bne 1f
+    move.l TTYTBL(%A1),%A1  |  use first entry in DCB table
+1:
+    bsr WRITESTR
+    clr.w (%A1)             |  Set status to success
     bra EXITT0
 |------------------------------------------------------------------------------
 PUTC:                     |  Put a character to the console
