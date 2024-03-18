@@ -46,12 +46,12 @@ MUX0BASE:
     .section HW_SECT,#execinstr,#alloc
 |
 |------------------------------------------------------------------------------
-|  Prints a string to the console.
+|  Prints a string to a console for kernel messages.
 |  Input: Address of string in A0.
 |  Output: A0 unchanged.
 |
-PUTSTR:
-    .global PUTSTR
+KPUTSTR:
+    .global kPUTSTR
     movem.l %D0/%A0-%A1,-(%SP)
     GET_TCB %A1
     move.l TCB_CON(%A1),%A1 |  Pointer to device block
@@ -77,15 +77,16 @@ WRITESTR:
     stop #0                 |  Driver not found
 |
 |------------------------------------------------------------------------------
-|  Put a single character to the console.
+|  Put a single character to a TTY.
 |  Input: Character in D0.B
+|         Address of DCB for TTY in %A1
 |  Output: None
 |
 PUTCHAR:
     .global PUTCHAR
-    move.l %A1,-(%SP)
-    GET_TCB %A1
-    move.l TCB_CON(%A1),%A1 |  Pointer to device block
+|    move.l %A1,-(%SP)
+|    GET_TCB %A1
+|    move.l TCB_CON(%A1),%A1 |  Pointer to device block
     cmp.w #DRV_SLTTY,DCB_DRIVER(%A1)
     beq SLTTYPUTC
     cmp.w #DRV_MXTTY,DCB_DRIVER(%A1)
@@ -117,7 +118,7 @@ GETCHAR:
 SLTTYPUTC:
     move.l DCB_PORT(%A1),%A1
     move.b %D0,1(%A1)
-    move.l (%SP)+,%A1
+|    move.l (%SP)+,%A1
     rts
 |
 |------------------------------------------------------------------------------
@@ -436,11 +437,11 @@ CLEANUP:
     CLR.B CLKSTAT      |  Stop the clock
     NUMSTR_L CLKCOUNT,#OSTXT,#0,10
     MOVE.L #TIMESG,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     MOVE #OSTXT,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     MOVE #NEWLINE,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     STOP #0x2000
     BRA .
 |
@@ -574,11 +575,11 @@ NULLVEC:                |  All vectors initialized to this.
     MOVE.L 2(%SP),%A0
     NUMSTR_L %A0,#OSTXT,#8,16
     MOVE.L #UNINITIALIZED,%A0
-    JSR PUTSTR          |  Print message
+    bsr KPUTSTR          |  Print message
     MOVE.L #OSTXT,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     MOVE.L #NEWLINE,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     bra CLEANUP
 |
 |------------------------------------------------------------------------------
@@ -586,11 +587,11 @@ ODDADDRHANDLE:         |  3-Odd address error handler
     MOVE.L 2(%SP),%A0
     NUMSTR_L %A0,#OSTXT,#8,16
     MOVE.L #ODDADDR,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     MOVE.L #OSTXT,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     MOVE.L #NEWLINE,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     bra CLEANUP
 |
 |------------------------------------------------------------------------------
@@ -598,11 +599,11 @@ ILLINSTHANDLE:         |  4-Illegal instruction handler
     MOVE.L 2(%SP),%A0
     NUMSTR_L %A0,#OSTXT,#8,16
     MOVE.L #ILLEXP,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     MOVE.L #OSTXT,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     MOVE.L #NEWLINE,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     bra CLEANUP
 |
 |------------------------------------------------------------------------------
@@ -610,11 +611,11 @@ PRIVHANDLE:            |  8-Privilege violation handler
     MOVE.L 2(%SP),%A0
     NUMSTR_L %A0,#OSTXT,#8,16
     MOVE.L #PRIVEXP,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     MOVE.L #OSTXT,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     MOVE.L #NEWLINE,%A0
-    JSR PUTSTR
+    bsr KPUTSTR
     bra CLEANUP
 |
 |  TRAP0-15 handlers go here 32-47 are in an external file.

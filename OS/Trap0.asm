@@ -79,26 +79,32 @@ PUTS:                       |  Put a string to the console
    .global PUTS
     move.l ARG1(%A1),%A0    |  Get string address
     GET_TCB %A1
-    move.l %A1,%D0          |  The move also tests for zero
-    bne 0f                  |  If TCB is not zero skip, otherwise
-    move.l TTYTBL(%A1),%A1  |  use first entry in DCB table
-    bra 1f
-0:
     move.l TCB_CON(%A1),%A1 |  Get console for current task
+    move.l %D0,-(%SP)
     move.l %A1,%D0          |  See if console is defined
     bne 1f
     move.l TTYTBL(%A1),%A1  |  use first entry in DCB table
 1:
+    move.l (%SP)+,%D0
     bsr WRITESTR
+    move.l %USP,%A1         |  A1 has the USP value
     clr.w (%A1)             |  Set status to success
     bra EXITT0
+|
 |------------------------------------------------------------------------------
-PUTC:                     |  Put a character to the console
+PUTC:                       |  Put a character to the console
    .global PUTC
-    MOVE.W ARG1(%A1),%D0  |  Get character to send
-    BSR PUTCHAR
-    CLR.W (%A1)           |  Set status to success
-    BRA EXITT0
+    move.w ARG1(%A1),%D0    |  Get character to send
+    GET_TCB %A1
+    move.l TCB_CON(%A1),%A1 |  Get console for current task
+    move.l %A1,%D1          |  See if console is defined
+    bne 1f
+    move.l TTYTBL(%A1),%A1  |  use first entry in DCB table
+1:
+    bsr PUTCHAR
+    move.l %USP,%A1         |  A1 has the USP value
+    clr.w (%A1)             |  Set status to success
+    bra EXITT0
 |
 |------------------------------------------------------------------------------
 GETC:                         |  Read a character from the console
