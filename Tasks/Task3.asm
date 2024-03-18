@@ -12,39 +12,61 @@
 |  Data section.
     .section CODE_SECT,#execinstr,#alloc
 |
-|  This is a bit of a hack until the O/S provides a way to get these values.
-|
-    .equ MAXTASK, 4
-    .equ TASKTBL,0x31b8
-    .equ CURRTASK,0x31b6
-|
 |  Start of program
 |
 START:
     LINK %A6,#0
+|
+|  Get some kernel information
+|
+    move.l #KER_CURRTSK,-(%SP)
+    move.w #SYS_KERDATA,-(%SP)
+    trap #0
+    tst.w (%SP)+
+    move.l (%SP)+,%D7       |  %D7 contains current task number
+|
+    move.l #KER_MAXTSK,-(%SP)
+    move.w #SYS_KERDATA,-(%SP)
+    trap #0
+    tst.w (%SP)+
+    move.l (%SP)+,%D6       |  %D6 contains max number of tasks
+|
+    move.l #KER_TASKTBL,-(%SP)
+    move.w #SYS_KERDATA,-(%SP)
+    trap #0
+    tst.w (%SP)+
+    move.l (%SP)+,%A5       |  %A5 is base address of task table
 |
 |  Print header messages
 |
 LOOP:
     PRINT #HOME_CLEAR
     PRINT #MSG1
-
+    PRINT #MSG2
+    move.l #KER_CLOCK,-(%SP)
+    move.w #SYS_KERDATA,-(%SP)
+    trap #0
+    tst.w (%SP)+
+    move.l (%SP)+,%D0
+    NUMSTR_L %D0,#STR1,#0,10
+    PRINT #STR1
+    PRINT #MSG3
+|
     PRINT #STAT0
-    move.w #MAXTASK,%D0
+    move.w %D6,%D0          |  Max task number
     subq.w #1,%D0
     clr.l %D1
     clr.l %D2
 0:
     NUMSTR_W %D1,#STR1,#0,10
     PRINT #STR1
-    cmp.w CURRTASK,%D1
+    cmp.w %D7,%D1           |  Check if current task
     bne 2f
     PRINT #STAT_CURR
     bra 1f
 2:
-    move.l %D2,%A5
-    move.l TASKTBL(%A5),%A5
-    tst.l TCB_STAT0(%A5)
+    move.l 0(%A5,%D2),%A4   |  Get TCB address in %A4
+    tst.l TCB_STAT0(%A4)
     beq 3f
     bsr STAT_DECODE
     bra 1f
@@ -63,12 +85,12 @@ LOOP:
 |  Decode status flags
 |
 STAT_DECODE:
-    btst #TCB_FLG_IO,TCB_STAT0(%A5)
+    btst #TCB_FLG_IO,TCB_STAT0(%A4)
     beq 1f
     PRINT #STAT_IO_WAIT
     bra 0f
 1:
-    btst #TCB_FLG_SLEEP,TCB_STAT0(%A5)
+    btst #TCB_FLG_SLEEP,TCB_STAT0(%A4)
     beq 2f
     PRINT #STAT_SLEEP
     move.l TCB_SLEEP(%A5),%D2
@@ -77,12 +99,12 @@ STAT_DECODE:
     PRINT #NEWLINE
     bra 0f
 2:
-    btst #TCB_FLG_EXIT,TCB_STAT0(%A5)
+    btst #TCB_FLG_EXIT,TCB_STAT0(%A4)
     beq 3f
     PRINT #STAT_TERMINATE
     bra 0f
 3:
-    btst #TCB_FLG_CTRLC,TCB_STAT0(%A5)
+    btst #TCB_FLG_CTRLC,TCB_STAT0(%A4)
     beq 4f
     PRINT #STAT_CTRLC
     bra 0f
@@ -97,7 +119,9 @@ STAT_DECODE:
 
     TEXT HOME_CLEAR,"\x1b[H\x1b[J"
     TEXT PROMPT,"> "
-    TEXT MSG1,"O/S68K System Status\r\n"
+    TEXT MSG1,"O/S-68K System Status\r\n"
+    TEXT MSG2,"Uptime "
+    TEXT MSG3," ticks\r\n"
     TEXT STAT0,"Task status:\r\n"
     TEXT STAT_READY,"  Ready\r\n"
     TEXT STAT_IO_WAIT,"  I/O Wait\r\n"

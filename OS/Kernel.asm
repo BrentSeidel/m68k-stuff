@@ -309,6 +309,7 @@ MXTTYRX_CHAR:
 |
     .section OS_DATA,#write,#alloc
 CLKCOUNT:
+    .global CLKCOUNT
     dc.l 0             |  This gets incremented once per clock tick
     TEXT ODDADDR,"odd address encountered at "
     TEXT ILLEXP,"Illegal instruction encountered at "

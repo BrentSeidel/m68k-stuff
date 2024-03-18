@@ -43,23 +43,25 @@ ARG1 = 2
     move #0x2700,%SR
     bsr CTXSAVE
     movem.l %D0/%A0-%A1,-(%SP)
-    move.l %USP,%A1    |  A1 has the USP value
+    move.l %USP,%A1         |  A1 has the USP value
 
-    move.w (%A1),%D0   |  Get function number
+    move.w (%A1),%D0        |  Get function number
     cmp.w #SYS_EXIT, %D0
-    beq EXITP          |  Go to function 0 - exit
+    beq EXITP               |  Go to function 0 - exit
     cmp.w #SYS_PUTS,%D0
-    beq PUTS           |  Go to function 1 - putstr
+    beq PUTS                |  Go to function 1 - putstr
     cmp.w #SYS_GETC,%D0
-    beq GETC           |  Go to function 2 - getc
+    beq GETC                |  Go to function 2 - getc
     cmp.w #SYS_PUTC,%D0
-    beq PUTC           |  Go to function 3 - putc
+    beq PUTC                |  Go to function 3 - putc
     cmp.w #SYS_SLEEP,%D0
-    beq SLEEP          |  Go to function 16 - sleep
+    beq SLEEP               |  Go to function 16 - sleep
     cmp.w #SYS_SUTDOWN,%D0
-    beq SHUTDOWN       |  Go to function 64 - shutdown
+    beq SHUTDOWN            |  Go to function 64 - shutdown
+    cmp.w #SYS_KERDATA,%D0
+    beq KERNEL_DATA         |  Go to function 65 - Get kernel data
 |
-    move.w #0xFFFF,(%A1)   |  Undefined function
+    move.w #0xFFFF,(%A1)    |  Undefined function
 |
 |  Common Trap 0 exit
 |
@@ -68,7 +70,7 @@ EXITT0:
     rte
 |
 |------------------------------------------------------------------------------
-EXITP:                    |  Exit program
+EXITP:                      |  Exit program
     GET_TCB %A0
     bset #TCB_FLG_EXIT,TCB_STAT0(%A0) |  Set task terminated bit
     movem.l (%SP)+,%D0/%A0-%A1
@@ -139,4 +141,40 @@ SLEEP:
 SHUTDOWN:
    .global SHUTDOWN
     bra CLEANUP
-
+|
+|------------------------------------------------------------------------------
+|  Returns selected kernel data.  This can be used to avoid having to
+|  edit and rebuild software when kernel locations change.  The parameter
+|  is a longword indicating what data is to be retrieved.  It will be
+|  replaced by the requested data.  A word value of 0xFFFE is returned
+|  in the function selector position to indicate unknown information.
+KERNEL_DATA:
+    move.l ARG1(%A1),%D0    |  Get data request
+    cmp.l #KER_CLOCK,%D0
+    beq 1f
+    cmp.l #KER_MAXTSK,%D0
+    beq 2f
+    cmp.l #KER_CURRTSK,%D0
+    beq 3f
+    cmp.l #KER_TASKTBL,%D0
+    beq 4f
+    move.w #0xFFFE,(%A1)
+    bra EXITT0
+1:                          |  Get clock count
+    move.l CLKCOUNT,ARG1(%A1)
+    clr.w (%A1)
+    bra EXITT0
+2:
+    move.l #MAXTASK,ARG1(%A1)
+    clr.w (%A1)
+    bra EXITT0
+3:
+    clr.l %D0
+    move.w CURRTASK,%D0
+    move %D0,ARG1(%A1)
+    clr.w (%A1)
+    bra EXITT0
+4:
+    move.l #TASKTBL,ARG1(%A1)
+    clr.w (%A1)
+    bra EXITT0

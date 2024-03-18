@@ -25,12 +25,20 @@
 |   16 - Sleep for the number of clock ticks in the argument
 |   64 - Shutdown
 |
-    .equ SYS_EXIT,      0 |  End the current task
-    .equ SYS_PUTS,      1 |  Send a string to the console
-    .equ SYS_GETC,      2 |  Get a character from the console
-    .equ SYS_PUTC,      3 |  Send a character to the console
-    .equ SYS_SLEEP,    16 |  Suspend current task for a number of clock ticks
-    .equ SYS_SUTDOWN,  64 |  Shutdown the system
+    .equ SYS_EXIT,      0   |  End the current task
+    .equ SYS_PUTS,      1   |  Send a string to the console
+    .equ SYS_GETC,      2   |  Get a character from the console
+    .equ SYS_PUTC,      3   |  Send a character to the console
+    .equ SYS_SLEEP,    16   |  Suspend current task for a number of clock ticks
+    .equ SYS_SUTDOWN,  64   |  Shutdown the system
+    .equ SYS_KERDATA,  65   |  Get kernel data.
+|
+|  Kernel data requests
+|
+    .equ KER_CLOCK,    0    |  Return clock count
+    .equ KER_MAXTSK,   1    |  Return max number of tasks
+    .equ KER_CURRTSK,  2    |  Return current task number
+    .equ KER_TASKTBL,  3    |  Return address of task table
 |
 |  Library entry point
 |
