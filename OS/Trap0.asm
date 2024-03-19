@@ -171,7 +171,7 @@ KERNEL_DATA:
 3:
     clr.l %D0
     move.w CURRTASK,%D0
-    move %D0,ARG1(%A1)
+    move.l %D0,ARG1(%A1)
     clr.w (%A1)
     bra EXITT0
 4:
