@@ -288,19 +288,71 @@ MXTTYPUTS:
     rts
 |
 |------------------------------------------------------------------------------
+|  This is the same code as the SLTTYGETC function.  It's separated just
+|  in case interface specific changes are needed.  The major differences
+|  would be in the *RX_CHAR function.
+|  Gets a character from the single line TTY device pointed to by %A0
+|
 MXTTYGETC:
+    btst #DCB_BUFF_EMPTY,DCB_FLAG0(%A0)
+    beq 0f                      |  If buffer is empty, return invalid character
+      move.w #0x100,%D0
+      movem.l (%SP)+,%D1-%D2/%A1
+      rts
+0:
+    clr.l %D0                   |  Make sure unused bits are cleared
+    clr.l %D1
+    clr.l %D2
+    move.b DCB_FILL(%A0),%D1    |  Get fill pointer
+    move.b DCB_EMPTY(%A0),%D2   |  Get empty pointer
+    lea DCB_BUFFER(%A0),%A1     |  Get buffer pointer
+    add.l %D2,%A1
+    move.b (%A1),%D0            |  Get character
+    addq.b #1,%D2
+    move.b %D2,DCB_EMPTY(%A0)   |  Update empty pointer
+    bclr #DCB_BUFF_FULL,DCB_FLAG0(%A0)
+    cmp.b %D1,%D2               |  Check if buffer is now empty
+    bne 1f
+      bset #DCB_BUFF_EMPTY,DCB_FLAG0(%A0)
+1:
+    movem.l (%SP)+,%D1-%D2/%A1
     rts
 |
 |------------------------------------------------------------------------------
+|  Do any initializations required.  Currently none.
+|
 MXTTYINIT:
     rts
 |
 |------------------------------------------------------------------------------
+|  Handle interrupts.  Currently only interrupts on character RX.  This
+|  does device specific things necessary for each multiplexer and then
+|  passes control to common receive code.
+|
 MUX0HANDLE:
+    movem.l %D0-%D2/%A0-%A3,-(%SP)
+    move.l #3,%D0
     bra MXTTYRX_CHAR
 |
 |------------------------------------------------------------------------------
+|  Common receive code for multiplexer receive.
+|
+|  The basic process is
+|  Set channel to 0
+|  loop
+|    Loop
+|      If data ready for channel then
+|        Read byte
+|        Add byte to buffer for channel
+|      end if
+|      Exit if no more data
+|    end loop
+|    Increment channel
+|    Exit if channel is 8
+|  end loop
+|
 MXTTYRX_CHAR:
+    movem.l (%SP)+,%D0-%D2/%A0-%A3
     rte
 |
 |==============================================================================
@@ -355,7 +407,8 @@ TCB2: TCB CLI_ENTRY,0x300000,TTY1DEV
 TCB3: TCB CLI_ENTRY,0x400000,TTY2DEV
 |
 |  Table for TTY devices.  The device number indexes to a pointer to the device
-|  data.
+|  data.  Note that entries for a mux must be kept together and in channel
+|  order.
 |
 TTYCNT:
     .global TTYCNT
@@ -423,6 +476,12 @@ INIT:
     SET_VECTOR #67,#TTY2HANDLE
     move.l #TTY2DEV,%A0
     bsr SLTTYINIT
+|
+|  Initialize multi-line multiplexer
+|
+    SET_VECTOR #68,MUX0HANDLE
+    move.l #MUX0DEV,%A0
+    bsr MXTTYINIT
 |
 |  Start multitasking...
 |
