@@ -210,7 +210,7 @@ SLTTYRX_CHAR:
     bclr #TCB_FLG_IO,TCB_STAT0(%A3) |  Clear the console wait bit
 2:
     clr.l %D0
-    clr.l %d1
+    clr.l %D1
     move.b DCB_FILL(%A0),%D0    |  Fill pointer
     move.b DCB_EMPTY(%A0),%D1   |  Empty pointer
     move.l DCB_PORT(%A0),%A2    |  I/O port address
@@ -330,12 +330,13 @@ MXTTYINIT:
 |  passes control to common receive code.
 |
 MUX0HANDLE:
-    movem.l %D0-%D2/%A0-%A3,-(%SP)
+    movem.l %D0-%D3/%A0-%A4,-(%SP)
     move.l #3,%D0
     bra MXTTYRX_CHAR
 |
 |------------------------------------------------------------------------------
-|  Common receive code for multiplexer receive.
+|  Common receive code for multiplexer receive.  This is called with
+|  %D0 containing the index into the device table of the base mux device.
 |
 |  The basic process is
 |  Set channel to 0
@@ -352,7 +353,56 @@ MUX0HANDLE:
 |  end loop
 |
 MXTTYRX_CHAR:
-    movem.l (%SP)+,%D0-%D2/%A0-%A3
+    lsl.l #2,%D0
+    move.l #TTYTBL,%A4
+    add.l %D0,%A4               |  Get address in TTY table of base mux device
+    move.l (%A4),%A0            |  Get first DCB
+    move.l DCB_PORT(%A0),%A1    |  Base port address
+    move.l DCB_OWN(%A0),%A3     |  TCB of owning task, if any
+    clr.l %D0                   |  Channel 0
+0:
+    btst %D0,(%A1)
+    beq 3f                      |  If no data ready, check the next channel
+    move.b DCB_FILL(%A0),%D1    |  Fill pointer
+    move.b DCB_EMPTY(%A0),%D2   |  Empty pointer
+    lea DCB_BUFFER(%A0),%A2     |  Pointer to buffer
+    add.l %D1,%A2               |  Add offset to base address
+    move.b 2(%A1,%D0),%D3       |  Read data from the channel
+    |
+    |  Checks for special control character like CTRL-C can be added here.
+    |
+    cmp.b #ETX,%D3              |  Check for CTRL-C
+    bne 2f
+    clr.b DCB_EMPTY(%A0)        |  Clear the DCB buffer
+    clr.b DCB_FILL(%A0)
+    clr.l %D0
+    clr.l %D1
+    bset #DCB_BUFF_EMPTY,DCB_FLAG0(%A0)  |  Set buffer empty flag
+    bclr #DCB_BUFF_FULL,DCB_FLAG0(%A0)   |  Clear buffer full flag
+    move.l DCB_OWN(%A0),%D3     |  Check if TCB attached to DCB
+    beq 0b
+    bset #TCB_FLG_CTRLC,TCB_STAT0(%A3)   |  If so, set CTRL-C flag
+    bra 0b
+2:
+    move.b %D2,(%A1)            |  Write data to buffer
+    addq.b #1,%D0               |  Increment fill pointer
+    move.b %D0,DCB_FILL(%A0)    |  Write it back to DCB
+    bclr #DCB_BUFF_EMPTY,DCB_FLAG0(%A0) |  Clear empty flag
+    cmp.b %D0,%D1               |  Did fill pointer reach empty pointer
+    bne 0b
+    bset #DCB_BUFF_FULL,DCB_FLAG0(%A0) | Set full flag
+    addq.b #1,%D1               |  Increment empty pointer
+    move.b %D1,DCB_EMPTY(%A0)   |  Write it back to DCB
+    bra 0b                      |  Loop until no data for channel
+3:
+    addq.l #1,%D0               |  Go to next channel
+    cmp.b #8,%D0                |  Check if done
+    beq 4f                      |  If so, exit
+    addq.l #4,%A4               |  Move down the TTY table
+    move.l (%A4),%A0            |  Get next DCB
+    move.l DCB_OWN(%A0),%A3     |  Get owning TCB, if any.
+4:
+    movem.l (%SP)+,%D0-%D3/%A0-%A4
     rte
 |
 |==============================================================================
