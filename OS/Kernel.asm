@@ -105,7 +105,7 @@ GETCHAR:
     movem.l %D1-%D2/%A1,-(%SP)
     cmp.w #DRV_SLTTY,DCB_DRIVER(%A0)
     beq SLTTYGETC
-    cmp.w #DRV_MXTTY,DCB_DRIVER(%A1)
+    cmp.w #DRV_MXTTY,DCB_DRIVER(%A0)
     beq MXTTYGETC
     stop #0                 |  Driver not found
 |
@@ -424,7 +424,7 @@ CLKCOUNT:
 |  There are places for up to 16 possible tasks (including the null
 |  task that runs when no other task can).
 |
-    .equ MAXTASK, 4
+    .equ MAXTASK, 5
     .global MAXTASK
 CURRTASK:
     .global CURRTASK
@@ -435,7 +435,7 @@ TASKTBL:
     .dc.l TCB1          |  Task 1
     .dc.l TCB2          |  Task 2
     .dc.l TCB3          |  Task 3
-    .dc.l 0             |  No task 4
+    .dc.l TCB4             |  No task 4
     .dc.l 0             |  No task 5
     .dc.l 0             |  No task 6
     .dc.l 0             |  No task 7
@@ -455,6 +455,7 @@ TCB0: TCB NULLTASK,USRSTK,0
 TCB1: TCB CLI_ENTRY,0x200000,TTY0DEV
 TCB2: TCB CLI_ENTRY,0x300000,TTY1DEV
 TCB3: TCB CLI_ENTRY,0x400000,TTY2DEV
+TCB4: TCB CLI_ENTRY,0x500000,MUX0DEV
 |
 |  Table for TTY devices.  The device number indexes to a pointer to the device
 |  data.  Note that entries for a mux must be kept together and in channel

@@ -60,6 +60,16 @@ LOOP:
 0:
     NUMSTR_W %D1,#STR1,#0,10
     PRINT #STR1
+    PRINT #MSG_SP
+    move.l 0(%A5,%D2),%A4   |  Get TCB address in %A4
+    move.l TCB_PC(%A4),%D3  |  Get PC from TCB
+    NUMSTR_L %D3,#STR1,#8,16
+    PRINT #STR1
+    PRINT #MSG_SP
+    move.l TCB_SP(%A4),%D3  |  Get SP from TCB
+    NUMSTR_L %D3,#STR1,#8,16
+    PRINT #STR1
+    PRINT #MSG_SP
     cmp.w %D7,%D1           |  Check if current task
     bne 2f
     PRINT #STAT_CURR
@@ -93,8 +103,8 @@ STAT_DECODE:
     btst #TCB_FLG_SLEEP,TCB_STAT0(%A4)
     beq 2f
     PRINT #STAT_SLEEP
-    move.l TCB_SLEEP(%A5),%D2
-    NUMSTR_L %D2,#STR1,#0,10
+    move.l TCB_SLEEP(%A5),%D3
+    NUMSTR_L %D3,#STR1,#0,10
     PRINT #STR1
     PRINT #NEWLINE
     bra 0f
@@ -122,7 +132,8 @@ STAT_DECODE:
     TEXT MSG1,"O/S-68K System Status\r\n"
     TEXT MSG2,"Uptime "
     TEXT MSG3," ticks\r\n"
-    TEXT STAT0,"Task status:\r\n"
+    TEXT MSG_SP," "
+    TEXT STAT0,"Task    PC      SP      status:\r\n"
     TEXT STAT_READY,"  Ready\r\n"
     TEXT STAT_IO_WAIT,"  I/O Wait\r\n"
     TEXT STAT_SLEEP,"  Sleep  "

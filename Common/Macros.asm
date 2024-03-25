@@ -53,6 +53,12 @@
 |   NUMSTR_W <number>,<string>,<flags>,<base>
 |   NUMSTR_L <number>,<string>,<flags>,<base>
 |       <base> is the conversion base and can be 8, 10, or 16
+|       0-1: Size (00-Byte, 01-Word, 10-Long) (set by choice of macro)
+|         2: Sign (0-unsigned, 1-signed)
+|         3: Lead (0-no leading characters, 1-leading zeros)
+|         4: Negative (internal use only)
+|       5-7: Unused
+|      8-15: Unused
 |  Note that A0 cannot be used as a destination since it's saved and restored
 |
 .macro NUMSTR_B num,str,flag,base

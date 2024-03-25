@@ -181,8 +181,8 @@ STAT_DECODE:
     btst #TCB_FLG_SLEEP,TCB_STAT0(%A5)
     beq 2f
     PRINT #STAT_SLEEP
-    move.l TCB_SLEEP(%A5),%D2
-    NUMSTR_L %D2,%A3,#0,10
+    move.l TCB_SLEEP(%A5),%D3
+    NUMSTR_L %D3,%A3,#0,10
     PRINT %A3
     PRINT #NEWLINE
     bra 0f
