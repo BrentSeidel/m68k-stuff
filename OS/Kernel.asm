@@ -55,6 +55,10 @@ KPUTSTR:
     movem.l %D0/%A0-%A1,-(%SP)
     GET_TCB %A1
     move.l TCB_CON(%A1),%A1 |  Pointer to device block
+    move.l %A1,%D1          |  See if console is defined
+    bne 1f
+    move.l TTYTBL(%A1),%A1  |  use first entry in DCB table
+1:
     cmp.w #DRV_SLTTY,DCB_DRIVER(%A1)
     beq SLTTYPUTS
     cmp.w #DRV_MXTTY,DCB_DRIVER(%A1)
@@ -84,9 +88,6 @@ WRITESTR:
 |
 PUTCHAR:
     .global PUTCHAR
-|    move.l %A1,-(%SP)
-|    GET_TCB %A1
-|    move.l TCB_CON(%A1),%A1 |  Pointer to device block
     cmp.w #DRV_SLTTY,DCB_DRIVER(%A1)
     beq SLTTYPUTC
     cmp.w #DRV_MXTTY,DCB_DRIVER(%A1)
@@ -118,7 +119,6 @@ GETCHAR:
 SLTTYPUTC:
     move.l DCB_PORT(%A1),%A1
     move.b %D0,1(%A1)
-|    move.l (%SP)+,%A1
     rts
 |
 |------------------------------------------------------------------------------
@@ -319,9 +319,13 @@ MXTTYGETC:
     rts
 |
 |------------------------------------------------------------------------------
-|  Do any initializations required.  Currently none.
+|  Do any initializations required.  Write 3 to the status register to reset
+|  the device and enable interrupts.  %A0 contains the address of the base
+|  DCB for the mux.
 |
 MXTTYINIT:
+    move.l DCB_PORT(%A0),%A0    |  Get base I/O address
+    move.b #3,1(%A0)            |  Reset and enable interrupts
     rts
 |
 |------------------------------------------------------------------------------
@@ -363,6 +367,8 @@ MXTTYRX_CHAR:
 0:
     btst %D0,(%A1)
     beq 3f                      |  If no data ready, check the next channel
+    clr.l %D1
+    clr.l %D2
     move.b DCB_FILL(%A0),%D1    |  Fill pointer
     move.b DCB_EMPTY(%A0),%D2   |  Empty pointer
     lea DCB_BUFFER(%A0),%A2     |  Pointer to buffer
@@ -484,7 +490,7 @@ TTYTBL:
 TTY0DEV: DCB TTY0BASE,0,DRV_SLTTY,TCB1
 TTY1DEV: DCB TTY1BASE,1,DRV_SLTTY,TCB2
 TTY2DEV: DCB TTY2BASE,2,DRV_SLTTY,TCB3
-MUX0DEV: DCB MUX0BASE,0,DRV_MXTTY,0
+MUX0DEV: DCB MUX0BASE,0,DRV_MXTTY,TCB4
 MUX1DEV: DCB MUX0BASE,1,DRV_MXTTY,0
 MUX2DEV: DCB MUX0BASE,2,DRV_MXTTY,0
 MUX3DEV: DCB MUX0BASE,3,DRV_MXTTY,0
@@ -530,7 +536,7 @@ INIT:
 |
 |  Initialize multi-line multiplexer
 |
-    SET_VECTOR #68,MUX0HANDLE
+    SET_VECTOR #68,#MUX0HANDLE
     move.l #MUX0DEV,%A0
     bsr MXTTYINIT
 |
@@ -683,8 +689,8 @@ CTXREST:
 |
 NULLVEC:                |  All vectors initialized to this.
     .global NULLVEC
-    MOVE.L 2(%SP),%A0
-    NUMSTR_L %A0,#OSTXT,#8,16
+    move.l 2(%SP),%A1
+    NUMSTR_L %A1,#OSTXT,#8,16
     MOVE.L #UNINITIALIZED,%A0
     bsr KPUTSTR          |  Print message
     MOVE.L #OSTXT,%A0
@@ -695,8 +701,8 @@ NULLVEC:                |  All vectors initialized to this.
 |
 |------------------------------------------------------------------------------
 ODDADDRHANDLE:         |  3-Odd address error handler
-    MOVE.L 2(%SP),%A0
-    NUMSTR_L %A0,#OSTXT,#8,16
+    move.l 2(%SP),%A1
+    NUMSTR_L %A1,#OSTXT,#8,16
     MOVE.L #ODDADDR,%A0
     bsr KPUTSTR
     MOVE.L #OSTXT,%A0
@@ -707,8 +713,8 @@ ODDADDRHANDLE:         |  3-Odd address error handler
 |
 |------------------------------------------------------------------------------
 ILLINSTHANDLE:         |  4-Illegal instruction handler
-    MOVE.L 2(%SP),%A0
-    NUMSTR_L %A0,#OSTXT,#8,16
+    move.l 2(%SP),%A1
+    NUMSTR_L %A1,#OSTXT,#8,16
     MOVE.L #ILLEXP,%A0
     bsr KPUTSTR
     MOVE.L #OSTXT,%A0
@@ -719,8 +725,8 @@ ILLINSTHANDLE:         |  4-Illegal instruction handler
 |
 |------------------------------------------------------------------------------
 PRIVHANDLE:            |  8-Privilege violation handler
-    MOVE.L 2(%SP),%A0
-    NUMSTR_L %A0,#OSTXT,#8,16
+    move.l 2(%SP),%A1
+    NUMSTR_L %A1,#OSTXT,#8,16
     MOVE.L #PRIVEXP,%A0
     bsr KPUTSTR
     MOVE.L #OSTXT,%A0
