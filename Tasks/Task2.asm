@@ -11,7 +11,6 @@
     .section CODE_SECT,#execinstr,#alloc
 |
 TASK2:                  |  first instruction of program
-   .global TASK1
 |
 |  Print header message and initialize
 |
@@ -43,8 +42,7 @@ LOOP:
     .section DATA_SECT,#write,#alloc
 
     STRING INSTR,0x100
-    TEXT MSG1,"Computing Fibonacci Numbers (display in hexidecimal)\r\n"
+    TEXT MSG1,"Computing Fibonacci Numbers\r\n"
     TEXT NEWLINE,"\r\n"
-    .global INSTR,MSG1,NEWLINE
     .end                |  last line of source
 

@@ -127,5 +127,6 @@ EXIT_PROGRAM:
     TEXT CMD2,"TRI"
     TEXT CMD3,"END"
     TEXT BYE,"Good-bye!\r\n"
+    TEXT NEWLINE,"\r\n"
     .end  START              |  last line of source
 

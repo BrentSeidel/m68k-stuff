@@ -262,7 +262,7 @@ MXTTYPUTC:
     move.l DCB_PORT(%A1),%A1
     add.l %D1,%A1
     move.b %D0,2(%A1)
-    move.l (%SP)+,%A1
+|    move.l (%SP)+,%A1
     move.l (%SP)+,%D1
     rts
 |
@@ -356,6 +356,17 @@ MUX0HANDLE:
 |    Exit if channel is 8
 |  end loop
 |
+|  Register usage
+|    %A0 - DCB address
+|    %A1 - Base I/O port address
+|    %A2 - DCB buffer pointer
+|    %A3 - TCB of owning task
+|    %A4 - Address in TTYTBL (points to DCB address)
+|    %D0 - Entry number in DCB table
+|    %D1 - DCB fill pointer
+|    %D2 - DCB empty pointer
+|    %D3 - Character read
+|
 MXTTYRX_CHAR:
     lsl.l #2,%D0
     move.l #TTYTBL,%A4
@@ -367,6 +378,10 @@ MXTTYRX_CHAR:
 0:
     btst %D0,(%A1)
     beq 3f                      |  If no data ready, check the next channel
+    move.l %A3,%D1              |  Test if TCB is zero (we're clearing %D1 anyway)
+    beq 5f                      |  Skip if TCB is zero
+    bclr #TCB_FLG_IO,TCB_STAT0(%A3) |  Clear the console wait bit
+5:
     clr.l %D1
     clr.l %D2
     move.b DCB_FILL(%A0),%D1    |  Fill pointer
@@ -381,8 +396,8 @@ MXTTYRX_CHAR:
     bne 2f
     clr.b DCB_EMPTY(%A0)        |  Clear the DCB buffer
     clr.b DCB_FILL(%A0)
-    clr.l %D0
     clr.l %D1
+    clr.l %D2
     bset #DCB_BUFF_EMPTY,DCB_FLAG0(%A0)  |  Set buffer empty flag
     bclr #DCB_BUFF_FULL,DCB_FLAG0(%A0)   |  Clear buffer full flag
     move.l DCB_OWN(%A0),%D3     |  Check if TCB attached to DCB
@@ -390,15 +405,15 @@ MXTTYRX_CHAR:
     bset #TCB_FLG_CTRLC,TCB_STAT0(%A3)   |  If so, set CTRL-C flag
     bra 0b
 2:
-    move.b %D2,(%A1)            |  Write data to buffer
-    addq.b #1,%D0               |  Increment fill pointer
-    move.b %D0,DCB_FILL(%A0)    |  Write it back to DCB
+    move.b %D3,(%A2)            |  Write data to buffer
+    addq.b #1,%D1               |  Increment fill pointer
+    move.b %D1,DCB_FILL(%A0)    |  Write it back to DCB
     bclr #DCB_BUFF_EMPTY,DCB_FLAG0(%A0) |  Clear empty flag
-    cmp.b %D0,%D1               |  Did fill pointer reach empty pointer
+    cmp.b %D1,%D2               |  Did fill pointer reach empty pointer
     bne 0b
     bset #DCB_BUFF_FULL,DCB_FLAG0(%A0) | Set full flag
-    addq.b #1,%D1               |  Increment empty pointer
-    move.b %D1,DCB_EMPTY(%A0)   |  Write it back to DCB
+    addq.b #1,%D2               |  Increment empty pointer
+    move.b %D2,DCB_EMPTY(%A0)   |  Write it back to DCB
     bra 0b                      |  Loop until no data for channel
 3:
     addq.l #1,%D0               |  Go to next channel

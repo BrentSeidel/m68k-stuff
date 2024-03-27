@@ -87,7 +87,7 @@ LOOP:
     addq.l #4,%D2
     dbf %D0,0b
 |
-    PRINT #STR_NEWLINE
+    PRINT #NEWLINE
     SLEEP #10
     bra LOOP
 |
@@ -141,7 +141,7 @@ STAT_DECODE:
     TEXT STAT_CTRLC, "  Ctrl-C\r\n"
     TEXT STAT_UNKNOWN,"  Unknown wait\r\n"
     TEXT STAT_CURR,"  Current\r\n"
-    TEXT STR_NEWLINE,"\r\n"
+    TEXT NEWLINE,"\r\n"
     STRING STR1,0x100
     .end                    |  last line of source
 
