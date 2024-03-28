@@ -422,6 +422,7 @@ MXTTYRX_CHAR:
     addq.l #4,%A4               |  Move down the TTY table
     move.l (%A4),%A0            |  Get next DCB
     move.l DCB_OWN(%A0),%A3     |  Get owning TCB, if any.
+    bra 0b
 4:
     movem.l (%SP)+,%D0-%D3/%A0-%A4
     rte
@@ -445,7 +446,7 @@ CLKCOUNT:
 |  There are places for up to 16 possible tasks (including the null
 |  task that runs when no other task can).
 |
-    .equ MAXTASK, 5
+    .equ MAXTASK, 6
     .global MAXTASK
 CURRTASK:
     .global CURRTASK
@@ -456,8 +457,8 @@ TASKTBL:
     .dc.l TCB1          |  Task 1
     .dc.l TCB2          |  Task 2
     .dc.l TCB3          |  Task 3
-    .dc.l TCB4             |  No task 4
-    .dc.l 0             |  No task 5
+    .dc.l TCB4          |  Task 4
+    .dc.l TCB5          |  Task 5
     .dc.l 0             |  No task 6
     .dc.l 0             |  No task 7
     .dc.l 0             |  No task 8
@@ -477,6 +478,7 @@ TCB1: TCB CLI_ENTRY,0x200000,TTY0DEV
 TCB2: TCB CLI_ENTRY,0x300000,TTY1DEV
 TCB3: TCB CLI_ENTRY,0x400000,TTY2DEV
 TCB4: TCB CLI_ENTRY,0x500000,MUX0DEV
+TCB5: TCB CLI_ENTRY,0x500000,MUX1DEV
 |
 |  Table for TTY devices.  The device number indexes to a pointer to the device
 |  data.  Note that entries for a mux must be kept together and in channel
@@ -506,7 +508,7 @@ TTY0DEV: DCB TTY0BASE,0,DRV_SLTTY,TCB1
 TTY1DEV: DCB TTY1BASE,1,DRV_SLTTY,TCB2
 TTY2DEV: DCB TTY2BASE,2,DRV_SLTTY,TCB3
 MUX0DEV: DCB MUX0BASE,0,DRV_MXTTY,TCB4
-MUX1DEV: DCB MUX0BASE,1,DRV_MXTTY,0
+MUX1DEV: DCB MUX0BASE,1,DRV_MXTTY,TCB5
 MUX2DEV: DCB MUX0BASE,2,DRV_MXTTY,0
 MUX3DEV: DCB MUX0BASE,3,DRV_MXTTY,0
 MUX4DEV: DCB MUX0BASE,4,DRV_MXTTY,0

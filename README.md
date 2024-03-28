@@ -20,13 +20,14 @@ come up with a better name.
 
 ## Current status
 ### Multitasking is Working
-Currently four tasks are defined:
+Currently five tasks are defined:
 1. The background null tasks which runs when all other tasks are blocked.  It
 is part of the operating system.
 2. A task used to test various routines.
 3. A task that just prints Fibonacci numbers that always runs.  It provides
 an obvious indication if the systems stalls.
 4. A task that provides a system status indication.
+5. Another Fibonacci task to load the system.
 
 Tasks can be suspended for sleeping or waiting for input to occur.
 
@@ -41,12 +42,12 @@ and the user tasks.  It provides things like:
 hexidecimal for byte, word, and long number.
 * String input
 * String functions to assist in parsing string
+* A basic command line interpreter that is shared between all tasks
 
 ## Future Plans
 Future plans include the following (subject to change)
 * Implement mass storage with a filesystem (possibilities include MS-DOS,
 CP/M, Minix, or other).
-* Add a CLI to the library
 * Add message passing to the OS kernel.
 * Add a buffer pool.  This will probably be needed to support other things.
 

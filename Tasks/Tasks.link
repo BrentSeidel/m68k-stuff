@@ -23,4 +23,6 @@ TASK6_D = TASK5_D + 0x100000;
   D3_SECT TASK3_D : { Task3.o (DATA_SECT) }
   C4_SECT TASK4_C : { Task4.o (CODE_SECT) }
   D4_SECT TASK4_D : { Task4.o (DATA_SECT) }
+  C5_SECT TASK5_C : { Task5.o (CODE_SECT) }
+  D5_SECT TASK5_D : { Task5.o (DATA_SECT) }
 }
